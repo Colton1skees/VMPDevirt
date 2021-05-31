@@ -1,0 +1,103 @@
+1400561C0
+movzx eax,byte ptr [rsi]
+add rsi,1
+mov rcx,[rbp]
+add rbp,8
+mov [rsp+rax],rcx
+
+
+14007953D
+mov rax,[rsi]
+add rsi,8
+sub rbp,8
+mov [rbp],rax
+
+
+1400B4D08
+movzx eax,byte ptr [rsi]
+add rsi,1
+mov rax,[rsp+rax]
+sub rbp,8
+mov [rbp],rax
+
+
+1400BC2DF
+mov rax,[rbp]
+mov rcx,[rbp+8]
+add rax,rcx
+mov [rbp+8],rax
+pushfq
+pop qword ptr [rbp]
+
+
+1400BF04C
+mov rax,rbp
+sub rbp,8
+mov [rbp],rax
+
+
+1400F5CB2
+mov rax,[rbp]
+mov rcx,[rbp+8]
+not rax
+not rcx
+and rax,rcx
+mov [rbp+8],rax
+pushfq
+pop qword ptr [rbp]
+
+
+140030886
+mov rcx,[rbp]
+mov rax,[rcx]
+mov [rbp],rax
+
+
+140073A8D
+mov rbp,[rbp]
+
+
+14008B4EA
+mov rax,[rbp]
+rcr cx,11h
+not rcx
+adc cx,r10w
+mov rcx,[rbp+8]
+not rax
+not rcx
+and rax,rcx
+mov [rbp+8],rax
+pushfq
+pop qword ptr [rbp]
+
+
+140051D47
+movzx eax,byte ptr [rsi]
+add rsi,1
+mov rax,[rsp+rax]
+sub rbp,8
+mov [rbp],rax
+xchg rax,rax
+
+
+14008B314
+mov rsp,rbp
+pop rbp
+pop r12
+pop rbx
+pop rdi
+pop r10
+pop r11
+popfq
+pop r9
+pop rax
+pop r15
+pop rsi
+pop r8
+pop r13
+pop rdx
+pop rcx
+pop r14
+ret
+
+

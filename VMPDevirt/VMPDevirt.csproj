@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Dna">
+      <HintPath>..\..\Dna\Dna\bin\Debug\netcoreapp3.1\Dna.dll</HintPath>
+    </Reference>
+    <Reference Include="Iced">
+      <HintPath>..\..\Dna\Dna\bin\Debug\netcoreapp3.1\Iced.dll</HintPath>
+    </Reference>
+    <Reference Include="MoreLinq">
+      <HintPath>..\..\Dna\Dna\bin\Debug\netcoreapp3.1\MoreLinq.dll</HintPath>
+    </Reference>
+    <Reference Include="Rivers">
+      <HintPath>..\..\Dna\Dna\bin\Debug\netcoreapp3.1\Rivers.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
