@@ -39,8 +39,12 @@ namespace VMPDevirt.VMP
             RemoveBranches();
             RemoveDispatcher();
             RemoveDeadcode();
+
+            Console.WriteLine("V1 optimized handler: \n{0}", handlerBlock.ToString());
             RemoveRollingEncryption();
             RemoveDeadcode();
+
+            Console.WriteLine("Finished optimized handler: \n{0}", handlerBlock.ToString());
             return handlerBlock.Instructions;
         }
 

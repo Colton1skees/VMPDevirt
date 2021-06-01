@@ -18,6 +18,9 @@
     <Reference Include="Rivers">
       <HintPath>..\..\Dna\Dna\bin\Debug\netcoreapp3.1\Rivers.dll</HintPath>
     </Reference>
+    <Reference Include="Unicorn.Net">
+      <HintPath>..\..\Dna\Dna\bin\Debug\netcoreapp3.1\Unicorn.Net.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

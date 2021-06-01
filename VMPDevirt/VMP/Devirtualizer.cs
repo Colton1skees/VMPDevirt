@@ -31,6 +31,10 @@ namespace VMPDevirt.VMP
         public void Execute()
         {
             DumpHandlers();
+
+
+            // var graph = Dna.FunctionParser.GetControlFlowGraph(0x14008B4EA);
+            // var handlerInstructions = handlerOptimizer.OptimizeHandler(graph.GetInstructions().ToList());
         }
 
         public void DumpHandlers()
