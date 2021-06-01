@@ -34,11 +34,11 @@ namespace VMPDevirt.VMP.IL
 
     public class ILInstruction
     {
+        public ILOpcode OpCode { get; set; }
+
         private ILOperand lhs;
 
         private ILOpcode rhs;
-
-        public ILOpcode OpCode { get; set; }
 
         public ILOperand LHS { get; set; } = new NilOperand();
 
@@ -53,11 +53,5 @@ namespace VMPDevirt.VMP.IL
         {
             return RHS != null;
         }
-
-        public ILInstruction()
-        {
-
-        }
-
     }
 }

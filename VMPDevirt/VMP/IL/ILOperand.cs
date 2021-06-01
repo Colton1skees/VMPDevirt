@@ -6,7 +6,14 @@ using System.Threading.Tasks;
 
 namespace VMPDevirt.VMP.IL
 {
-    public abstract class ILOperand : IOperand
+    public enum OperandType
+    {
+        Nil,
+        Immediate,
+        Register,
+    }
+
+    public abstract class ILOperand
     {
         public abstract OperandType Type { get; }
 
