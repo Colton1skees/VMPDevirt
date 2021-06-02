@@ -39,6 +39,8 @@ namespace VMPDevirt.VMP
             lifterFunctions.Add(LiftLConst, 4);
             lifterFunctions.Add(LiftVCPush, 5);
             lifterFunctions.Add(LiftVADD, 6);
+            lifterFunctions.Add(LiftPushVSP, 3);
+            lifterFunctions.Add(LiftVNAND, 8);
         }
 
         public List<ILInstruction> LiftHandlerToIL(List<Instruction> instructions)
@@ -202,7 +204,6 @@ namespace VMPDevirt.VMP
                     ShiftVSP();
                     break;
 
-
                 case 4:
                     WriteToVSP();
                     break;
@@ -213,6 +214,14 @@ namespace VMPDevirt.VMP
 
         }
 
+        /*
+            mov rax,[rbp]
+            mov rcx,[rbp+8]
+            add rax,rcx
+            mov [rbp+8],rax
+            pushfq
+            pop qword ptr [rbp]
+        */
         private void LiftVADD(List<ILInstruction> outputInstructions)
         {
             switch (instructionIndex)
@@ -241,13 +250,105 @@ namespace VMPDevirt.VMP
                     WriteToVSP();
                     break;
 
-
                 case 4:
                     PushFlags();
                     break;
 
                 case 5:
-                    StoreFlags();
+                    PopFlags();
+                    break;
+
+                default:
+                    throw new InvalidHandlerMatchException();
+            }
+
+        }
+
+        /*
+            mov rax,rbp
+            sub rbp,8
+            mov [rbp],rax
+        */
+        private void LiftPushVSP(List<ILInstruction> outputInstructions)
+        {
+            switch (instructionIndex)
+            {
+                case 0:
+                    // Expect mov vcr, vsp
+                    bool isMovVSP = ins.Mnemonic == Mnemonic.Mov &&
+                        ins.Op0Kind == OpKind.Register && ins.Op1Kind == OpKind.Register &&
+                        ins.Op1Register == vmpState.VSP;
+                    Expect(isMovVSP);
+                    break;
+
+                case 1:
+                    ShiftVSP();
+                    break;
+
+                case 2:
+                    WriteToVSP();
+                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSHVSP));
+                    break;
+
+                default:
+                    throw new InvalidHandlerMatchException();
+            }
+
+        }
+
+        /*
+            mov rax,[rbp]
+            mov rcx,[rbp+8]
+            not rax
+            not rcx
+            and rax,rcx
+            mov [rbp+8],rax
+            pushfq
+            pop qword ptr [rbp]
+        */
+        private void LiftVNAND(List<ILInstruction> outputInstructions)
+        {
+            switch (instructionIndex)
+            {
+                case 0:
+                    ReadVSP();
+                    break;
+
+                case 1:
+                    ReadVSP();
+                    break;
+
+                case 2:
+                    Expect(ins.Mnemonic == Mnemonic.Not && ins.Op0Kind == OpKind.Register);
+                    break;
+
+                case 3:
+                    Expect(ins.Mnemonic == Mnemonic.Not && ins.Op0Kind == OpKind.Register);
+                    break;
+
+                case 4:
+                    Expect(ins.Mnemonic == Mnemonic.And && ins.Op0Kind == OpKind.Register && ins.Op1Kind == OpKind.Register);
+                    var t0 = GetNewTemporary();
+                    var t1 = GetNewTemporary();
+                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t0));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t1));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.NAND, t0, t1));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.COMPUTEFLAGS));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSH, t0));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSHFLAGS));
+                    break;
+
+                case 5:
+                    WriteToVSP();
+                    break;
+
+
+                case 6:
+                    PushFlags();
+                    break;
+
+                case 7:
+                    PopFlags();
                     break;
 
                 default:
@@ -344,7 +445,7 @@ namespace VMPDevirt.VMP
             Expect(isPushFlags);
         }
 
-        private void StoreFlags()
+        private void PopFlags()
         {
             bool isStoreFlags = ins.Mnemonic == Mnemonic.Pop &&
                 ins.MemoryBase == vmpState.VSP;

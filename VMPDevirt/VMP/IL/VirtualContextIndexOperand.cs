@@ -20,7 +20,7 @@ namespace VMPDevirt.VMP.IL
 
         public override string ToString()
         {
-            return String.Format("vcr[0x{0}]", Index.ToString());
+            return String.Format("vcr[0x{0}]", Index.ToString("X"));
         }
     }
 }

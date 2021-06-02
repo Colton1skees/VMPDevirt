@@ -14,6 +14,8 @@ namespace VMPDevirt.VMP.IL
         VMEXIT,
         READMEM,
         WRITEMEM,
+        PUSHVSP,
+        SETVSP,
 
         // x86 temporary helpers:
         PUSHFLAGS,
@@ -39,6 +41,7 @@ namespace VMPDevirt.VMP.IL
         AND,
         OR,
         XOR,
+        NAND,
         ROL,
         ROR,
     }
