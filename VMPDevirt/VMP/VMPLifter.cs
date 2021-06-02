@@ -40,7 +40,10 @@ namespace VMPDevirt.VMP
             lifterFunctions.Add(LiftVCPush, 5);
             lifterFunctions.Add(LiftVADD, 6);
             lifterFunctions.Add(LiftPushVSP, 3);
+            lifterFunctions.Add(LiftSetVSP, 1);
             lifterFunctions.Add(LiftVNAND, 8);
+            lifterFunctions.Add(LiftReadMem, 3);
+            lifterFunctions.Add(LiftVMExit, 18);
         }
 
         public List<ILInstruction> LiftHandlerToIL(List<Instruction> instructions)
@@ -293,7 +296,27 @@ namespace VMPDevirt.VMP
                 default:
                     throw new InvalidHandlerMatchException();
             }
+        }
 
+        /*
+            mov rbp, [rbp]
+        */
+        private void LiftSetVSP(List<ILInstruction> outputInstructions)
+        {
+            switch (instructionIndex)
+            {
+                case 0:
+                    // mov vsp, [vsp]
+                    bool isSetVSP = ins.Mnemonic == Mnemonic.Mov &&
+                        ins.Op0Register == vmpState.VSP && ins.MemoryBase == vmpState.VSP;
+                    Expect(isSetVSP);
+
+                    outputInstructions.Add(new ILInstruction(ILOpcode.SETVSP));
+                    break;
+
+                default:
+                    throw new InvalidHandlerMatchException();
+            }
         }
 
         /*
@@ -354,7 +377,121 @@ namespace VMPDevirt.VMP
                 default:
                     throw new InvalidHandlerMatchException();
             }
+        }
 
+        /*
+            mov rcx,[rbp]
+            mov rax,[rcx]
+            mov [rbp],rax
+        */
+        private void LiftReadMem(List<ILInstruction> outputInstructions)
+        {
+            switch (instructionIndex)
+            {
+                case 0:
+                    ReadVSP();
+                    break;
+
+                case 1:
+                    // check for write to volatile register, e.g mov rax, [rcx]
+                    bool isDereferenceMem = ins.Mnemonic == Mnemonic.Mov &&
+                        ins.Op0Kind == OpKind.Register && ins.Op1Kind.IsMemory() &&
+                        ins.MemoryBase != vmpState.VSP;
+                    Expect(isDereferenceMem);
+                    break;
+
+                case 2:
+                    WriteToVSP();
+                    var t0 = GetNewTemporary();
+                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t0));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.READMEM, t0));
+                    break;
+
+                default:
+                    throw new InvalidHandlerMatchException();
+            }
+        }
+
+        private void LiftVMExit(List<ILInstruction> outputInstructions)
+        {
+            switch (instructionIndex)
+            {
+                case 0:
+                    Expect(Mnemonic.Mov, Register.RSP, vmpState.VSP);
+                    break;
+
+                case 1:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 2:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 3:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 4:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 5:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 6:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 7:
+                    Expect(Mnemonic.Popfq);
+                    break;
+
+                case 8:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 9:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 10:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 11:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 12:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 13:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 14:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 15:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 16:
+                    Expect(Mnemonic.Pop);
+                    break;
+
+                case 17:
+                    Expect(Mnemonic.Ret);
+                    outputInstructions.Add(new ILInstruction(ILOpcode.VMENTER));
+                    break;
+
+                default:
+                    throw new InvalidHandlerMatchException();
+            }
         }
 
         /// <summary>
@@ -468,12 +605,13 @@ namespace VMPDevirt.VMP
             return emulator.ReadRegister(ins.Op1Register);
         }
 
-        /*
-        private bool Expect(Mnemonic mnemonic, object operandOne = null, object operandTwo = null)
+        
+        private void Expect(Mnemonic mnemonic, object operandOne = null, object operandTwo = null)
         {
-            return ins.Is(mnemonic, operandOne, operandTwo);
+            bool result = ins.Is(mnemonic, operandOne, operandTwo);
+            Expect(result);
         }
-        */
+        
 
         private void Expect(bool input)
         {

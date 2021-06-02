@@ -39,6 +39,7 @@ namespace VMPDevirt.VMP
             // Start emulating the virtualized function. Note: The emulator actually only implements single step functionality, so this only starts executing the first instruction.
             ulong vmEntry = 0x1400FD439;
             emulator.TraceFunction(vmEntry);
+            VMPLifter lifter = new VMPLifter(this, emulator);
 
             List<ILInstruction> ilInstructions = new List<ILInstruction>();
             while(true)
@@ -53,7 +54,7 @@ namespace VMPDevirt.VMP
                     var handlerGraph = Dna.FunctionParser.GetControlFlowGraph(emulator.ReadRegister(Register.RIP));
                     var handlerInstructions = handlerOptimizer.OptimizeHandler(handlerGraph.GetInstructions().ToList());
 
-                    VMPLifter lifter = new VMPLifter(this, emulator);
+
                     var liftedInstructions = lifter.LiftHandlerToIL(handlerInstructions);
                     ilInstructions.AddRange(liftedInstructions);
 
@@ -65,30 +66,9 @@ namespace VMPDevirt.VMP
 
                 else
                 {
-
                     emulator.SingleStep();
                 }
             }
-
-            /*
-            var handlerGraph = Dna.FunctionParser.GetControlFlowGraph(0x1400561C0);
-            var handlerInstructions = handlerOptimizer.OptimizeHandler(handlerGraph.GetInstructions().ToList());
-
-            // Initialize the emulator and single step until the first handler
-            VMPEmulator emulator = new VMPEmulator(this);
-            emulator.TraceFunction(0x1400FD439);
-            while (emulator.ReadRegister(Register.RIP) != 0x1400561C0)
-                emulator.SingleStep();
-
-            VMPLifter lifter = new VMPLifter(this, emulator);
-            var liftedInstruction = lifter.LiftHandlerToIL(handlerInstructions);
-            Console.WriteLine("Lifted instructions: ");
-            foreach(var insn in liftedInstruction)
-            {
-                Console.WriteLine(insn);
-            }
-            //Console.WriteLine("lifted instructions: " + liftedInstruction.Count);
-            */
         }
 
         public void DumpHandlers()

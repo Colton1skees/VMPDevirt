@@ -1,9 +1,11 @@
+
+
 1400561C0
-movzx eax,byte ptr [rsi]
-add rsi,1
-mov rcx,[rbp]
-add rbp,8
-mov [rsp+rax],rcx
+movzx eax,byte ptr [rsi] 
+add rsi,1 
+mov rcx,[rbp] 
+add rbp,8 
+mov [rsp+rax],rcx 
 
 
 14007953D
@@ -78,3 +80,16 @@ pop r14
 ret
 
 
+
+foreach(var lifter in lifters)
+                {
+                    try
+                    {
+                        var liftedInstructon = lifter(instruction, i);
+                    }
+
+                    catch(Exception ex)
+                    {
+
+                    }
+                }

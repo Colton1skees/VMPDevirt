@@ -49,14 +49,14 @@ namespace VMPDevirt.VMP
         public void SingleStep()
         {
             // TODO: FIX THREADING ISSUES
-            Thread.Sleep(1);
+            Thread.Sleep(2);
             blockUntilSingleStep = false;
             while(blockUntilSingleStep == false)
             {
 
             }
 
-           Thread.Sleep(2);
+           Thread.Sleep(3);
         }
 
         public void SingleStepUntil(ulong address)
