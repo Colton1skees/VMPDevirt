@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Iced.Intel;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,15 +9,17 @@ namespace VMPDevirt.VMP.IL
 {
     public enum ILOpcode
     {
-        // Special:
-        VMEnter,
-        VMExit,
-        ReadMem,
-        WriteMem,
+        // VM Specific:
+        VMENTER,
+        VMEXIT,
+        READMEM,
+        WRITEMEM,
+        VCPOP,
+        VCPUSH,
         
         // Stack:
-        Push,
-        Pop,
+        PUSH,
+        POP,
 
         // Arithmetic:
         ADD,
@@ -34,15 +37,19 @@ namespace VMPDevirt.VMP.IL
 
     public class ILInstruction
     {
+
         public ILOpcode OpCode { get; set; }
 
-        private ILOperand lhs;
+        public ILOperand LHS { get; set; }
 
-        private ILOpcode rhs;
+        public ILOperand RHS { get; set; }
 
-        public ILOperand LHS { get; set; } = new NilOperand();
-
-        public ILOperand RHS { get; set; } = new NilOperand();
+        public ILInstruction(ILOpcode _opCode, ILOperand _lhs, ILOperand _rhs)
+        {
+            OpCode = _opCode;
+            LHS = _lhs;
+            RHS = _rhs;
+        }
 
         public bool HasLHS()
         {
@@ -53,5 +60,36 @@ namespace VMPDevirt.VMP.IL
         {
             return RHS != null;
         }
+
+        public void SetLHS(ulong value)
+        {
+            LHS = new ImmediateOperand(value);
+        }
+
+        public void SetLHS(long value)
+        {
+            LHS = new ImmediateOperand(value);
+        }
+
+        public void SetLHS(Register register)
+        {
+            LHS = new RegisterOperand(register);
+        }
+
+        public void SetRHS(ulong value)
+        {
+            LHS = new ImmediateOperand(value);
+        }
+
+        public void SetRHS(long value)
+        {
+            LHS = new ImmediateOperand(value);
+        }
+
+        public void SetRHS(Register register)
+        {
+            RHS = new RegisterOperand(register);
+        }
+
     }
 }

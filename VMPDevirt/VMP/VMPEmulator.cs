@@ -1,9 +1,11 @@
 ﻿using Dna.Core.Tracing;
+using Iced.Intel;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Unicorn;
 using Unicorn.X86;
@@ -17,11 +19,10 @@ namespace VMPDevirt.VMP
     {
         private Devirtualizer devirtualizer;
 
-        private FunctionTracer tracer;
+        public FunctionTracer tracer;
 
-        private List<ulong> breakpoints = new List<ulong>();
+        bool blockUntilSingleStep = true;
 
-        bool pendingEmulateBlock = false;
 
         public VMPEmulator(Devirtualizer _devirtualizer)
         {
@@ -33,46 +34,50 @@ namespace VMPDevirt.VMP
         private void EmulateInstructionCallback(Emulator _emulator, ulong address, int size, object userToken)
         {
             var emulator = (X86Emulator)_emulator;
-            Console.WriteLine(devirtualizer.Dna.Disassembler.DisassembleBytesAtBinaryLocation(address));
+            Console.WriteLine("Pre execution callback for: {0}", devirtualizer.Dna.Disassembler.DisassembleBytesAtBinaryLocation(address));
 
-            lock(breakpoints)
+            // Block until we single step
+            while(blockUntilSingleStep)
             {
-                if (breakpoints.Contains(address))
-                {
-                    pendingEmulateBlock = true;
-                    emulator.Stop();
-                }
+
             }
 
+            blockUntilSingleStep = true;
+                
         }
 
-        public void Stop()
+        public void SingleStep()
         {
-            tracer.Emulator.Stop();
-        }
-
-        public void Resume()
-        {
-            tracer.Emulator.Start((ulong)tracer.Emulator.Registers.RIP, ulong.MaxValue);
-        }
-
-        public void EmulateUntil(List<ulong> pendingAddresses)
-        {
-            lock (breakpoints)
+            // TODO: FIX THREADING ISSUES
+            Thread.Sleep(1);
+            blockUntilSingleStep = false;
+            while(blockUntilSingleStep == false)
             {
-                breakpoints.Clear();
-                breakpoints.AddRange(pendingAddresses);
+
             }
+
+            Thread.Sleep(5);
         }
 
-        public void EmulateUntil(ulong address)
+        public void RunUntil(ulong address)
         {
-            EmulateUntil(new List<ulong>() { address });
+            while(tracer.Emulator.Registers.RIP != (long)address)
+            {
+                SingleStep();
+            }
+
+            Thread.Sleep(1);
         }
 
         public void TraceFunction(ulong address)
         {
             tracer.TraceFunction(address);
+        }
+
+        public ulong ReadRegister(Register register)
+        {
+            // Unclean hack, but it saves time :)
+            return (ulong)(long)tracer.Emulator.Registers.GetType().GetProperty(register.ToString().ToUpper()).GetValue(tracer.Emulator.Registers, null);
         }
 
     }

@@ -1,4 +1,5 @@
 ﻿using Dna.Core.Binary.Windows;
+using Iced.Intel;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -20,19 +21,6 @@ namespace VMPDevirt
             // Execute
             Devirtualizer devirt = new Devirtualizer(dna, @"C:\Users\colton\Desktop\Reversing\IDBs\Vmp\T4USample\split_runtrace.txt");
             devirt.Execute();
-
-            /*
-            VMPEmulator emulator = new VMPEmulator(devirt);
-
-            ulong addrDispatcher = 0x1400F818A;
-            emulator.EmulateUntil(addrDispatcher);
-
-            ulong addrVMStart = 0x1400FD439;
-            emulator.TraceFunction(addrVMStart);
-
-
-            Console.WriteLine("HIT EMULATED POINT");
-            */
         }
 
         static void Main(string[] args)

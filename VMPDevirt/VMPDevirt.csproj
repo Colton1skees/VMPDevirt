@@ -2,10 +2,20 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Iced" Version="1.11.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="AsmResolver">
+      <HintPath>..\..\Dna\Dna\bin\Debug\netcoreapp3.1\AsmResolver.dll</HintPath>
+    </Reference>
+    <Reference Include="AsmResolver.PE.File">
+      <HintPath>..\..\Dna\Dna\bin\Debug\netcoreapp3.1\AsmResolver.PE.File.dll</HintPath>
+    </Reference>
     <Reference Include="Dna">
       <HintPath>..\..\Dna\Dna\bin\Debug\netcoreapp3.1\Dna.dll</HintPath>
     </Reference>

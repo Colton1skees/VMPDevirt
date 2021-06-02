@@ -30,11 +30,16 @@ namespace VMPDevirt.VMP
 
         public void Execute()
         {
-            DumpHandlers();
+           // DumpHandlers();
 
 
-            // var graph = Dna.FunctionParser.GetControlFlowGraph(0x14008B4EA);
-            // var handlerInstructions = handlerOptimizer.OptimizeHandler(graph.GetInstructions().ToList());
+            var graph = Dna.FunctionParser.GetControlFlowGraph(0x1400561C0);
+            var handlerInstructions = handlerOptimizer.OptimizeHandler(graph.GetInstructions().ToList());
+            Console.WriteLine("asdas");
+
+            VMPLifter lifter = new VMPLifter(this);
+            var liftedInstruction = lifter.LiftHandlerToIL(handlerInstructions, null);
+            Console.WriteLine("lifted instructions: " + liftedInstruction.Count);
         }
 
         public void DumpHandlers()
