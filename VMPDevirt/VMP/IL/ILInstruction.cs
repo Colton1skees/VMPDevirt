@@ -14,6 +14,14 @@ namespace VMPDevirt.VMP.IL
         VMEXIT,
         READMEM,
         WRITEMEM,
+
+        // x86 temporary helpers:
+        PUSHFLAGS,
+        COMPUTEFLAGS,
+
+        /// <summary>
+        /// Pops a value from the virtual stack into the virtual context.
+        /// </summary>
         VCPOP,
         VCPUSH,
         
@@ -37,14 +45,35 @@ namespace VMPDevirt.VMP.IL
 
     public class ILInstruction
     {
-
         public ILOpcode OpCode { get; set; }
 
         public ILOperand LHS { get; set; }
 
         public ILOperand RHS { get; set; }
 
-        public ILInstruction(ILOpcode _opCode, ILOperand _lhs, ILOperand _rhs)
+        public IReadOnlyList<ILOperand> Operands 
+        { 
+            get
+            {
+                List<ILOperand> operands = new List<ILOperand>();
+                if (HasLHS())
+                    operands.Add(LHS);
+                if (HasRHS())
+                    operands.Add(RHS);
+
+                return operands.AsReadOnly();
+            }
+        }
+
+        public int OpCount 
+        { 
+            get
+            {
+                return Operands.Count;
+            }
+        }
+
+        public ILInstruction(ILOpcode _opCode, ILOperand _lhs = null, ILOperand _rhs = null)
         {
             OpCode = _opCode;
             LHS = _lhs;
@@ -89,6 +118,22 @@ namespace VMPDevirt.VMP.IL
         public void SetRHS(Register register)
         {
             RHS = new RegisterOperand(register);
+        }
+
+        public override string ToString()
+        {
+            string outputString;
+
+            if (OpCount == 0)
+                outputString = OpCode.ToString();
+            else if (OpCount == 1)
+                outputString = String.Format("{0} {1}", OpCode, LHS);
+            else if (OpCount == 2)
+                outputString = String.Format("{0} {1}, {2}", OpCode, LHS, RHS);
+            else
+                throw new Exception();
+
+            return outputString.ToLower();
         }
 
     }

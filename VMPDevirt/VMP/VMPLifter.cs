@@ -2,6 +2,7 @@
 using Iced.Intel;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -26,22 +27,26 @@ namespace VMPDevirt.VMP
 
         private Dictionary<Action<List<ILInstruction>>, int> lifterFunctions;
 
-        public VMPLifter(Devirtualizer _devirt)
+        private int lastTemporaryID;
+
+        public VMPLifter(Devirtualizer _devirt, VMPEmulator _emulator)
         {
             devirt = _devirt;
             vmpState = devirt.VMState;
+            emulator = _emulator;
             lifterFunctions = new Dictionary<Action<List<ILInstruction>>, int>();
             lifterFunctions.Add(LiftVCPop, 5);
- 
+            lifterFunctions.Add(LiftLConst, 4);
+            lifterFunctions.Add(LiftVCPush, 5);
+            lifterFunctions.Add(LiftVADD, 6);
         }
 
-        public List<ILInstruction> LiftHandlerToIL(List<Instruction> instructions, VMPEmulator emulator)
+        public List<ILInstruction> LiftHandlerToIL(List<Instruction> instructions)
         {
-            List<ILInstruction> finalLiftedInstructions = null;
-
             // Create a collection for the results of each lifter
+            var possibleLifters = lifterFunctions.Where(x => x.Value == instructions.Count);
             Dictionary<int, List<ILInstruction>> liftedCollections = new Dictionary<int, List<ILInstruction>>();
-            for(int i = 0; i < lifterFunctions.Count; i++)
+            for(int i = 0; i < possibleLifters.Count(); i++)
             {
                 liftedCollections.Add(i, new List<ILInstruction>());
             }
@@ -49,39 +54,64 @@ namespace VMPDevirt.VMP
             // For each instruction, we pass it into a lifting function and hope that it was expecting this type of instruction
             for (instructionIndex = 0; instructionIndex < instructions.Count; instructionIndex++)
             {
-                var instruction = instructions[instructionIndex];
-                for(int lifterIndex = 0; lifterIndex < lifterFunctions.Count; lifterIndex++)
+                // Iterate through each lifter
+                ins = instructions[instructionIndex];
+                for (int lifterIndex = 0; lifterIndex < possibleLifters.Count(); lifterIndex++)
                 {
-                    // retrieve the collection for storing the output instructions
+                    // retrieve the collection for storing the output instructions, and execute the lifter if the collection is not null
                     var outputList = liftedCollections[lifterIndex];
-
-                    try
+                    if (!outputList.Any(x => x == null))
                     {
-                        // attempt to lift the current instruction, and automatically store it in the output list
-                        lifterFunctions[lifterIndex](outputList);
-                    }
+                        try
+                        {
+                            // attempt to lift the current instruction, and automatically store it in the output list
+                            possibleLifters.ElementAt(lifterIndex).Key(outputList);
+                        }
 
-                    catch(Exception ex)
-                    {
-                        // clear the output list if we fail to lift a single instruction
-                        outputList.Clear();
+                        catch (Exception ex)
+                        {
+                            // add a null instruction to indicate that the handler failed to match
+                            outputList.Add(null);
+                        }
                     }
                     
                 }
+
+                if(instructionIndex < instructions.Count - 1)
+                {
+                    emulator.SingleStepUntil(instructions[instructionIndex + 1].IP);
+                }
+
             }
 
-            // If we have lifted every instruction, then we try to locate the only matching handler by lifting an invalid instruction and catching the exception
-            // For now we have to do this, since I didn't feel like hardcoding the length o
+            var matches = liftedCollections.Where(x => !x.Value.Any(y => y == null)).ToList();
+            if(matches.Count() == 0)
+            {
+                // TODO: output handler instructions in exception
+                throw new InvalidHandlerMatchException(String.Format("Failed to lift handler: no matches found."));
+            }
 
-            return null;
+            else if(matches.Count() > 1)
+            {
+                throw new InvalidHandlerMatchException(String.Format("Failed to lift handler: Found {0} matches when we expected 1.", matches.Count()));
+            }
+
+           return matches.Single().Value;
         }
 
+
+        /*
+            movzx eax,byte ptr [rsi] 
+            add rsi,1 
+            mov rcx,[rbp] 
+            add rbp,8 
+            mov [rsp+rax],rcx 
+        */
         private void LiftVCPop(List<ILInstruction> outputInstructions)
         {
             switch(instructionIndex)
             {
                 case 0:
-                    outputInstructions.Add(new ILInstruction(ILOpcode.VCPOP, ILOperand.Create(10), ILOperand.Create(10)));
                     ReadVIP();
                     break;
 
@@ -99,6 +129,8 @@ namespace VMPDevirt.VMP
 
                 case 4:
                     WriteToVCPOffset();
+                    ulong offset = GetVCPOffset();
+                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, new VirtualContextIndexOperand(offset)));
                     break;
 
                 default:
@@ -107,28 +139,115 @@ namespace VMPDevirt.VMP
 
         }
 
-        private void LiftNonExistent(List<ILInstruction> outputInstructions)
+        /*
+            mov rax,[rsi]
+            add rsi,8
+            sub rbp,8
+            mov[rbp],rax
+        */
+        private void LiftLConst(List<ILInstruction> outputInstructions)
         {
             switch (instructionIndex)
             {
                 case 0:
-                    ShiftVSP();
+                    ReadVIP();
                     break;
 
                 case 1:
-                    ReadVIP();
+                    ShiftVIP();
                     break;
 
                 case 2:
-                    ReadVIP();
+                    ShiftVSP();
                     break;
 
                 case 3:
+                    WriteToVSP();
+                    ulong immediate = emulator.ReadRegister(ins.Op1Register);
+                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSH, ILOperand.Create(immediate)));
+                    break;
+
+                default:
+                    throw new InvalidHandlerMatchException();
+            }
+
+        }
+
+        /*
+            movzx eax,byte ptr [rsi]
+            add rsi,1
+            mov rax,[rsp+rax]
+            sub rbp,8
+            mov [rbp],rax
+        */
+        private void LiftVCPush(List<ILInstruction> outputInstructions)
+        {
+            switch (instructionIndex)
+            {
+                case 0:
                     ReadVIP();
                     break;
 
+                case 1:
+                    ShiftVIP();
+                    break;
+
+                case 2:
+                    ReadVCP();
+                    ulong offset = GetVCPOffset();
+                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSH, new VirtualContextIndexOperand(offset)));
+                    break;
+
+                case 3:
+                    ShiftVSP();
+                    break;
+
+
                 case 4:
-                    ReadVIP();
+                    WriteToVSP();
+                    break;
+
+                default:
+                    throw new InvalidHandlerMatchException();
+            }
+
+        }
+
+        private void LiftVADD(List<ILInstruction> outputInstructions)
+        {
+            switch (instructionIndex)
+            {
+                case 0:
+                    ReadVSP();
+                    break;
+
+                case 1:
+                    ReadVSP();
+                    break;
+
+                case 2:
+                    Expect(ins.Mnemonic == Mnemonic.Add && ins.Op0Kind == OpKind.Register && ins.Op1Kind == OpKind.Register);
+                    var t0 = GetNewTemporary();
+                    var t1 = GetNewTemporary();
+                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t0));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t1));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.ADD, t0, t1));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.COMPUTEFLAGS));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSH, t0));
+                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSHFLAGS));
+                    break;
+
+                case 3:
+                    WriteToVSP();
+                    break;
+
+
+                case 4:
+                    PushFlags();
+                    break;
+
+                case 5:
+                    StoreFlags();
                     break;
 
                 default:
@@ -159,6 +278,15 @@ namespace VMPDevirt.VMP
             Expect(isReadVSP);
         }
 
+        private void ReadVCP()
+        {
+            bool isReadVCP = (ins.Mnemonic == Mnemonic.Mov) &&
+                ins.MemoryBase == vmpState.VCP && ins.MemoryIndex != Register.None &&
+                ins.Op0Kind == OpKind.Register;
+
+            Expect(isReadVCP);
+        }
+
         /// <summary>
         /// (add || sub) vip, immediate
         /// </summary>
@@ -183,14 +311,61 @@ namespace VMPDevirt.VMP
             Expect(isShiftVSP);
         }
 
+        /// <summary>
+        /// mov vsp, reg
+        /// </summary>
+        private void WriteToVSP()
+        {
+            bool isWriteToVSP = (ins.Mnemonic == Mnemonic.Mov) &&
+                ins.MemoryBase == vmpState.VSP &&
+                ins.Op1Kind == OpKind.Register;
+
+            Expect(isWriteToVSP);
+        }
+
+        /// <summary>
+        /// mov [VCP + offset], reg
+        /// </summary>
         private void WriteToVCPOffset()
         {
             bool isWriteVCP = (ins.Mnemonic == Mnemonic.Mov) &&
-                ins.MemoryBase == vmpState.VCP && ins.MemoryIndex != Register.None;
+                ins.MemoryBase == vmpState.VCP && ins.MemoryIndex != Register.None &&
+                ins.Op1Kind == OpKind.Register;
 
             Expect(isWriteVCP);
         }
 
+        /// <summary>
+        /// pushfq
+        /// </summary>
+        private void PushFlags()
+        {
+            bool isPushFlags = ins.Mnemonic == Mnemonic.Pushfq;
+            Expect(isPushFlags);
+        }
+
+        private void StoreFlags()
+        {
+            bool isStoreFlags = ins.Mnemonic == Mnemonic.Pop &&
+                ins.MemoryBase == vmpState.VSP;
+
+            Expect(isStoreFlags);
+        }
+
+        private ulong GetVCPOffset()
+        {
+            return emulator.ReadRegister(ins.MemoryIndex);
+        }
+
+        private ulong GetOp0RegisterValue()
+        {
+            return emulator.ReadRegister(ins.Op0Register);
+        }
+
+        private ulong GetOp1RegisterValue()
+        {
+            return emulator.ReadRegister(ins.Op1Register);
+        }
 
         /*
         private bool Expect(Mnemonic mnemonic, object operandOne = null, object operandTwo = null)
@@ -203,6 +378,18 @@ namespace VMPDevirt.VMP
         {
             if(!input)
                 throw new Exception("Error matching handler. Failed to match instruction");
+        }
+
+        /// <summary>
+        /// Allocates an ID for a new temporary
+        /// </summary>
+        /// <returns></returns>
+        private TemporaryOperand GetNewTemporary()
+        {
+            int id = lastTemporaryID;
+            lastTemporaryID++;
+
+            return new TemporaryOperand(id);
         }
     }
 }

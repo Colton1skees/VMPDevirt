@@ -12,6 +12,8 @@ namespace VMPDevirt.VMP.IL
         Nil,
         Immediate,
         Register,
+        Temporary,
+        VirtualContexIndexOperand,
     }
 
     public abstract class ILOperand
@@ -29,8 +31,24 @@ namespace VMPDevirt.VMP.IL
         public RegisterOperand Register
         {
             get
-            { 
+            {
                 return (RegisterOperand)this;
+            }
+        }
+
+        public TemporaryOperand Temporary
+        {
+            get
+            {
+                return (TemporaryOperand)this;
+            }
+        }
+
+        public VirtualContextIndexOperand VirtualContextIndex
+        {
+            get
+            {
+                return (VirtualContextIndexOperand)this;
             }
         }
 
@@ -44,6 +62,15 @@ namespace VMPDevirt.VMP.IL
             return Type == OperandType.Register;
         }
 
+        public bool IsTemporary()
+        {
+            return Type == OperandType.Temporary;
+        }
+
+        public bool IsVirtualContextIndex()
+        {
+            return Type == OperandType.VirtualContexIndexOperand;
+        }
 
         public static ILOperand Create(ulong value)
         {

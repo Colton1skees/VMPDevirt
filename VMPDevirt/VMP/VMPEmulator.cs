@@ -34,7 +34,7 @@ namespace VMPDevirt.VMP
         private void EmulateInstructionCallback(Emulator _emulator, ulong address, int size, object userToken)
         {
             var emulator = (X86Emulator)_emulator;
-            Console.WriteLine("Pre execution callback for: {0}", devirtualizer.Dna.Disassembler.DisassembleBytesAtBinaryLocation(address));
+            Console.WriteLine("Pre execution callback for: {0} {1}", address.ToString("X"), devirtualizer.Dna.Disassembler.DisassembleBytesAtBinaryLocation(address));
 
             // Block until we single step
             while(blockUntilSingleStep)
@@ -49,14 +49,20 @@ namespace VMPDevirt.VMP
         public void SingleStep()
         {
             // TODO: FIX THREADING ISSUES
-            Thread.Sleep(1);
+            //Thread.Sleep(1);
             blockUntilSingleStep = false;
             while(blockUntilSingleStep == false)
             {
 
             }
 
-            Thread.Sleep(5);
+           Thread.Sleep(1);
+        }
+
+        public void SingleStepUntil(ulong address)
+        {
+            while (ReadRegister(Register.RIP) != address)
+                SingleStep();
         }
 
         public void RunUntil(ulong address)
@@ -71,7 +77,13 @@ namespace VMPDevirt.VMP
 
         public void TraceFunction(ulong address)
         {
-            tracer.TraceFunction(address);
+            // Start tracing in a new thread
+            new Thread(() =>
+            {
+                tracer.TraceFunction(address);
+            }).Start();
+
+            Thread.Sleep(150);
         }
 
         public ulong ReadRegister(Register register)

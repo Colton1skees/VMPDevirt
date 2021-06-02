@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using VMPDevirt.Runtrace;
+using VMPDevirt.VMP.IL;
 
 namespace VMPDevirt.VMP
 {
@@ -30,16 +31,64 @@ namespace VMPDevirt.VMP
 
         public void Execute()
         {
-           // DumpHandlers();
+            // DumpHandlers();
 
+            // Initialize the emulator and single step until we reach the first handler
+            VMPEmulator emulator = new VMPEmulator(this);
 
-            var graph = Dna.FunctionParser.GetControlFlowGraph(0x1400561C0);
-            var handlerInstructions = handlerOptimizer.OptimizeHandler(graph.GetInstructions().ToList());
-            Console.WriteLine("asdas");
+            // Start emulating the virtualized function. Note: The emulator actually only implements single step functionality, so this only starts executing the first instruction.
+            ulong vmEntry = 0x1400FD439;
+            emulator.TraceFunction(vmEntry);
 
-            VMPLifter lifter = new VMPLifter(this);
-            var liftedInstruction = lifter.LiftHandlerToIL(handlerInstructions, null);
-            Console.WriteLine("lifted instructions: " + liftedInstruction.Count);
+            List<ILInstruction> ilInstructions = new List<ILInstruction>();
+            while(true)
+            {
+
+                var rip = emulator.ReadRegister(Register.RIP);
+                var instruction = Dna.Disassembler.DisassembleBytesAtBinaryLocation(rip);
+
+                if (IsDispatcherInstruction(instruction))
+                {
+                    emulator.SingleStep();
+                    var handlerGraph = Dna.FunctionParser.GetControlFlowGraph(emulator.ReadRegister(Register.RIP));
+                    var handlerInstructions = handlerOptimizer.OptimizeHandler(handlerGraph.GetInstructions().ToList());
+
+                    VMPLifter lifter = new VMPLifter(this, emulator);
+                    var liftedInstructions = lifter.LiftHandlerToIL(handlerInstructions);
+                    ilInstructions.AddRange(liftedInstructions);
+
+                    foreach(var ilInstruction in ilInstructions)
+                    {
+                        Console.WriteLine("ILInstruction: {0}", ilInstruction);
+                    }
+                }
+
+                else
+                {
+
+                    emulator.SingleStep();
+                }
+            }
+
+            /*
+            var handlerGraph = Dna.FunctionParser.GetControlFlowGraph(0x1400561C0);
+            var handlerInstructions = handlerOptimizer.OptimizeHandler(handlerGraph.GetInstructions().ToList());
+
+            // Initialize the emulator and single step until the first handler
+            VMPEmulator emulator = new VMPEmulator(this);
+            emulator.TraceFunction(0x1400FD439);
+            while (emulator.ReadRegister(Register.RIP) != 0x1400561C0)
+                emulator.SingleStep();
+
+            VMPLifter lifter = new VMPLifter(this, emulator);
+            var liftedInstruction = lifter.LiftHandlerToIL(handlerInstructions);
+            Console.WriteLine("Lifted instructions: ");
+            foreach(var insn in liftedInstruction)
+            {
+                Console.WriteLine(insn);
+            }
+            //Console.WriteLine("lifted instructions: " + liftedInstruction.Count);
+            */
         }
 
         public void DumpHandlers()
@@ -73,6 +122,14 @@ namespace VMPDevirt.VMP
             }
 
             File.WriteAllLines("../../../optimized_handlers.txt", outputLines);
+        }
+
+        private bool IsDispatcherInstruction(Instruction instruction)
+        {
+            if (instruction.Mnemonic == Mnemonic.Ret || (instruction.Mnemonic == Mnemonic.Jmp && instruction.Op0Kind == OpKind.Register))
+                return true;
+
+            return false;
         }
 
         

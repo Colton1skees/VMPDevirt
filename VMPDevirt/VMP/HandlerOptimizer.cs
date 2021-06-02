@@ -120,13 +120,13 @@ namespace VMPDevirt.VMP
 
             var vrkStarts = handlerBlock.Instructions.Where(x => 
             x.Mnemonic == Mnemonic.Xor &&
-            x.Op0Register.GetFullRegister() == devirtualizer.VMState.VCR && 
+            x.Op0Register.GetFullRegister() == devirtualizer.VMState.ComputationReg && 
             x.Op1Register.GetFullRegister() == devirtualizer.VMState.VRK).ToList();
 
             var vrkEnds = handlerBlock.Instructions.Where(x => 
             x.Mnemonic == Mnemonic.Xor && 
             x.Op0Register.GetFullRegister() == devirtualizer.VMState.VRK && 
-            x.Op1Register.GetFullRegister() == devirtualizer.VMState.VCR).ToList();
+            x.Op1Register.GetFullRegister() == devirtualizer.VMState.ComputationReg).ToList();
 
             if(vrkStarts.Count() == 1 && vrkEnds.Count() == 1)
             {

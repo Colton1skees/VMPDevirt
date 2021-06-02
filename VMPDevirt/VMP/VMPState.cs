@@ -32,7 +32,7 @@ namespace VMPDevirt.VMP
         /// <summary>
         /// The register containing the virtual computation register(usually RAX).
         /// </summary>
-        public Register VCR { get; set; }
+        public Register ComputationReg { get; set; }
 
         public VMPState(Register _regVirtualStack, Register _regVirtualBytecodePointer, Register _regVirtualContext, Register _regVirtualRollingKey, Register _regVirtualComputationRegister)
         {
@@ -40,7 +40,7 @@ namespace VMPDevirt.VMP
             VIP = _regVirtualBytecodePointer;
             VCP = _regVirtualContext;
             VRK = _regVirtualRollingKey;
-            VCR = _regVirtualComputationRegister;
+            ComputationReg = _regVirtualComputationRegister;
         }
     }
 }
