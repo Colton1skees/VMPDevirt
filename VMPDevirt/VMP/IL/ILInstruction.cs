@@ -54,6 +54,8 @@ namespace VMPDevirt.VMP.IL
 
         public ILOperand RHS { get; set; }
 
+        public ulong Address { get; set; }
+
         public IReadOnlyList<ILOperand> Operands 
         { 
             get

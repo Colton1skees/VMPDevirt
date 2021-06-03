@@ -56,11 +56,16 @@ namespace VMPDevirt.VMP
 
 
                     var liftedInstructions = lifter.LiftHandlerToIL(handlerInstructions);
+                    foreach(var liftedInstruction in liftedInstructions)
+                    {
+                        liftedInstruction.Address = handlerInstructions.First().IP;
+                    }
                     ilInstructions.AddRange(liftedInstructions);
+
 
                     foreach(var ilInstruction in ilInstructions)
                     {
-                        Console.WriteLine("ILInstruction: {0}", ilInstruction);
+                        Console.WriteLine("ILInstruction({0}): {1}", ilInstruction.Address.ToString("X"), ilInstruction);
                     }
                 }
 
