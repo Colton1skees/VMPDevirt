@@ -10,19 +10,22 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 
         public int ID { get; }
 
-        public TemporaryOperand(int _id)
+        private int size;
+
+        public TemporaryOperand(int _id, int _size)
         {
             ID = _id;
+            size = _size;
+        }
+
+        public override int GetSize()
+        {
+            return size;
         }
 
         public override string ToString()
         {
             return "t" + ID.ToString();
-        }
-
-        public override int GetSize()
-        {
-            throw new NotImplementedException();
         }
     }
 }

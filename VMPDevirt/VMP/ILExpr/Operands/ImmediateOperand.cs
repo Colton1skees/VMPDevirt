@@ -6,7 +6,9 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 {
     public class ImmediateOperand : ExprOperand
     {
-        private ulong _value;
+        private ulong immValue;
+
+        private int size;
 
         public override ExprOperandType Type => ExprOperandType.Immediate;
 
@@ -15,8 +17,8 @@ namespace VMPDevirt.VMP.ILExpr.Operands
         /// </summary>
         public ulong U64
         {
-            get { return _value; }
-            set { _value = value; }
+            get { return immValue; }
+            private set { immValue = value; }
         }
 
         /// <summary>
@@ -24,38 +26,30 @@ namespace VMPDevirt.VMP.ILExpr.Operands
         /// </summary>
         public long I64
         {
-            get { return (long)_value; }
-            set { _value = (ulong)value; }
+            get { return (long)immValue; }
+            private set { immValue = (ulong)value; }
         }
 
-        public ImmediateOperand(ulong _U64)
+        public ImmediateOperand(ulong _U64, int _size)
         {
             U64 = _U64;
+            size = _size;
         }
 
-        public ImmediateOperand(long _I64)
+        public ImmediateOperand(long _I64, int _size)
         {
             I64 = _I64;
-        }
-
-        public static implicit operator ImmediateOperand(ulong _U64)
-        {
-            return new ImmediateOperand(_U64);
-        }
-
-        public static implicit operator ImmediateOperand(long _I64)
-        {
-            return new ImmediateOperand(_I64);
-        }
-
-        public override string ToString()
-        {
-            return "0x" + _value.ToString("X");
+            size = _size;
         }
 
         public override int GetSize()
         {
-            throw new NotImplementedException();
+            return size;
+        }
+
+        public override string ToString()
+        {
+            return "0x" + immValue.ToString("X");
         }
     }
 }

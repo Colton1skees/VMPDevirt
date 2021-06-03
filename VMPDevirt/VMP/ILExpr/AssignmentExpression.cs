@@ -37,20 +37,15 @@ namespace VMPDevirt.VMP.ILExpr
             return type == ExprOperandType.Register || type == ExprOperandType.Temporary || type == ExprOperandType.VirtualContextIndex;
         }
 
-        public override int GetSize()
-        {
-            throw new NotImplementedException();
-        }
-
         public override string ToString()
         {
             int op = OpCount;
             string result = null;
 
             if (op == 1)
-                result = String.Format("{0} = {1} {2}", DestinationOperand, OpCode, LHS);
+                result = String.Format("{0} = {1} {2}", DestinationOperand, GetOpCodeWithSize(), LHS);
             else if (op == 2)
-                result = String.Format("{0} = {1} {2}, {3}", DestinationOperand, OpCode, LHS, RHS);
+                result = String.Format("{0} = {1} {2}, {3}", DestinationOperand, GetOpCodeWithSize(), LHS, RHS);
             else
                 throw new Exception(String.Format("Failed to convert assignment expression to string. The operand count {0} is not valid.", op));
 

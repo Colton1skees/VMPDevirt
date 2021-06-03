@@ -13,7 +13,7 @@ namespace VMPDevirt.VMP.IL
         /// </summary>
         public ulong Index { get; set; }
 
-        public VirtualContextIndexOperand(ulong _index)
+        public VirtualContextIndexOperand(ulong _index, int size)
         {
             Index = _index;
         }

@@ -1,4 +1,5 @@
-﻿using Iced.Intel;
+﻿using Dna.Core;
+using Iced.Intel;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -16,9 +17,9 @@ namespace VMPDevirt.VMP.ILExpr.Operands
             Reg = _reg;
         }
 
-        public static implicit operator RegisterOperand(Register _reg)
+        public override int GetSize()
         {
-            return new RegisterOperand(_reg);
+            return Reg.GetSizeInBits();
         }
 
         public override string ToString()
@@ -26,9 +27,9 @@ namespace VMPDevirt.VMP.ILExpr.Operands
             return Reg.ToString();
         }
 
-        public override int GetSize()
+        public static implicit operator RegisterOperand(Register _reg)
         {
-            throw new NotImplementedException();
+            return new RegisterOperand(_reg);
         }
     }
 }

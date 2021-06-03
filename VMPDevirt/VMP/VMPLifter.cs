@@ -136,7 +136,8 @@ namespace VMPDevirt.VMP
                 case 4:
                     WriteToVCPOffset();
                     ulong offset = GetVCPOffset();
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, new VirtualContextIndexOperand(offset)));
+                    var size = ins.Op1Register.GetSizeInBits();
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, new VirtualContextIndexOperand(offset, size)));
                     break;
 
                 default:
@@ -170,7 +171,7 @@ namespace VMPDevirt.VMP
                 case 3:
                     WriteToVSP();
                     ulong immediate = emulator.ReadRegister(ins.Op1Register);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(immediate)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(immediate, ins.Op1Register.GetSizeInBits())));
                     break;
 
                 default:
@@ -201,7 +202,8 @@ namespace VMPDevirt.VMP
                 case 2:
                     ReadVCP();
                     ulong offset = GetVCPOffset();
-                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualContextIndexOperand(offset)));
+                    var size = ins.MemorySize.GetSize() * 8;
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualContextIndexOperand(offset, size)));
                     break;
 
                 case 3:
@@ -240,9 +242,10 @@ namespace VMPDevirt.VMP
 
                 case 2:
                     Expect(ins.Mnemonic == Mnemonic.Add && ins.Op0Kind == OpKind.Register && ins.Op1Kind == OpKind.Register);
-                    var t0 = GetNewTemporary();
-                    var t1 = GetNewTemporary();
-                    var t2 = GetNewTemporary();
+                    var size = ins.Op0Register.GetSizeInBits();
+                    var t0 = GetNewTemporary(size);
+                    var t1 = GetNewTemporary(size);
+                    var t2 = GetNewTemporary(size);
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.ADD, t2, t0, t1));
@@ -353,9 +356,10 @@ namespace VMPDevirt.VMP
 
                 case 4:
                     Expect(ins.Mnemonic == Mnemonic.And && ins.Op0Kind == OpKind.Register && ins.Op1Kind == OpKind.Register);
-                    var t0 = GetNewTemporary();
-                    var t1 = GetNewTemporary();
-                    var t2 = GetNewTemporary();
+                    var size = ins.Op0Register.GetSizeInBits();
+                    var t0 = GetNewTemporary(size);
+                    var t1 = GetNewTemporary(size);
+                    var t2 = GetNewTemporary(size);
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.NAND, t2, t0, t1));
@@ -404,7 +408,8 @@ namespace VMPDevirt.VMP
 
                 case 2:
                     WriteToVSP();
-                    var t0 = GetNewTemporary();
+                    var size = ins.Op1Register.GetSizeInBits();
+                    var t0 = GetNewTemporary(size);
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
                     outputInstructions.Add(new SpecialExpression(ExprOpCode.READMEM, t0));
                     break;
@@ -625,12 +630,12 @@ namespace VMPDevirt.VMP
         /// Allocates an ID for a new temporary
         /// </summary>
         /// <returns></returns>
-        private TemporaryOperand GetNewTemporary()
+        private TemporaryOperand GetNewTemporary(int size)
         {
             int id = lastTemporaryID;
             lastTemporaryID++;
 
-            return new TemporaryOperand(id);
+            return new TemporaryOperand(id, size);
         }
     }
 }

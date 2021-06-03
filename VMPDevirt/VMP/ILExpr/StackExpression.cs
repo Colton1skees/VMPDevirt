@@ -14,10 +14,5 @@ namespace VMPDevirt.VMP.ILExpr
             OpCode = _opCode;
             LHS = _lhs;
         }
-
-        public override int GetSize()
-        {
-            throw new NotImplementedException();
-        }
     }
 }

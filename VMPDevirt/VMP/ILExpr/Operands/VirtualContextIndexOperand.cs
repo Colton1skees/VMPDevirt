@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace VMPDevirt.VMP.ILExpr.Operands
@@ -8,14 +9,19 @@ namespace VMPDevirt.VMP.ILExpr.Operands
     {
         public override ExprOperandType Type => ExprOperandType.VirtualContextIndex;
 
+        private int size;
+
         /// <summary>
         /// The index of the virtual context operand.
         /// </summary>
         public ulong Index { get; set; }
 
-        public VirtualContextIndexOperand(ulong _index)
+        public VirtualContextIndexOperand(ulong _index, int _size)
         {
+            if (_size == 0)
+                Debugger.Break();
             Index = _index;
+            size = _size;
         }
 
         public override string ToString()
@@ -25,7 +31,7 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 
         public override int GetSize()
         {
-            throw new NotImplementedException();
+            return size;
         }
     }
 }

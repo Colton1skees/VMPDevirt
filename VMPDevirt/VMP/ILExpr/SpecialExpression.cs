@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using VMPDevirt.VMP.ILExpr.Operands;
 
-namespace VMPDevirt.VMP.ILExpr.Operands
+namespace VMPDevirt.VMP.ILExpr
 {
     public class SpecialExpression : ILExpression
     {
@@ -14,10 +15,5 @@ namespace VMPDevirt.VMP.ILExpr.Operands
         }
 
         public override ExprType Type => ExprType.Special;
-
-        public override int GetSize()
-        {
-            throw new NotImplementedException();
-        }
     }
 }

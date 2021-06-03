@@ -17,6 +17,8 @@ namespace VMPDevirt.VMP.ILExpr.Operands
     {
         public abstract ExprOperandType Type { get; }
 
+        public int Size => GetSize();
+
         public abstract int GetSize();
 
         public ImmediateOperand Immediate
@@ -71,14 +73,14 @@ namespace VMPDevirt.VMP.ILExpr.Operands
             return Type == ExprOperandType.VirtualContextIndex;
         }
 
-        public static ExprOperand Create(ulong value)
+        public static ExprOperand Create(ulong value, int size)
         {
-            return new ImmediateOperand(value);
+            return new ImmediateOperand(value, size);
         }
 
-        public static ExprOperand Create(long value)
+        public static ExprOperand Create(long value, int size)
         {
-            return new ImmediateOperand(value);
+            return new ImmediateOperand(value, size);
         }
 
         public static ExprOperand Create(Register register)
