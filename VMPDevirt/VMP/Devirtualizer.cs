@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using VMPDevirt.Runtrace;
-using VMPDevirt.VMP.IL;
+using VMPDevirt.VMP.ILExpr;
 
 namespace VMPDevirt.VMP
 {
@@ -41,7 +41,7 @@ namespace VMPDevirt.VMP
             emulator.TraceFunction(vmEntry);
             VMPLifter lifter = new VMPLifter(this, emulator);
 
-            List<ILInstruction> ilInstructions = new List<ILInstruction>();
+            List<ILExpression> ilInstructions = new List<ILExpression>();
             while(true)
             {
 

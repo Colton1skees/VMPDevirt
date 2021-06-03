@@ -6,7 +6,8 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using VMPDevirt.VMP.IL;
+using VMPDevirt.VMP.ILExpr;
+using VMPDevirt.VMP.ILExpr.Operands;
 
 namespace VMPDevirt.VMP
 {
@@ -25,7 +26,7 @@ namespace VMPDevirt.VMP
 
         private int instructionIndex;
 
-        private Dictionary<Action<List<ILInstruction>>, int> lifterFunctions;
+        private Dictionary<Action<List<ILExpression>>, int> lifterFunctions;
 
         private int lastTemporaryID;
 
@@ -34,7 +35,7 @@ namespace VMPDevirt.VMP
             devirt = _devirt;
             vmpState = devirt.VMState;
             emulator = _emulator;
-            lifterFunctions = new Dictionary<Action<List<ILInstruction>>, int>();
+            lifterFunctions = new Dictionary<Action<List<ILExpression>>, int>();
             lifterFunctions.Add(LiftVCPop, 5);
             lifterFunctions.Add(LiftLConst, 4);
             lifterFunctions.Add(LiftVCPush, 5);
@@ -46,14 +47,14 @@ namespace VMPDevirt.VMP
             lifterFunctions.Add(LiftVMExit, 18);
         }
 
-        public List<ILInstruction> LiftHandlerToIL(List<Instruction> instructions)
+        public List<ILExpression> LiftHandlerToIL(List<Instruction> instructions)
         {
             // Create a collection for the results of each lifter
             var possibleLifters = lifterFunctions.Where(x => x.Value == instructions.Count);
-            Dictionary<int, List<ILInstruction>> liftedCollections = new Dictionary<int, List<ILInstruction>>();
+            Dictionary<int, List<ILExpression>> liftedCollections = new Dictionary<int, List<ILExpression>>();
             for(int i = 0; i < possibleLifters.Count(); i++)
             {
-                liftedCollections.Add(i, new List<ILInstruction>());
+                liftedCollections.Add(i, new List<ILExpression>());
             }
 
             // For each instruction, we pass it into a lifting function and hope that it was expecting this type of instruction
@@ -112,7 +113,7 @@ namespace VMPDevirt.VMP
             add rbp,8 
             mov [rsp+rax],rcx 
         */
-        private void LiftVCPop(List<ILInstruction> outputInstructions)
+        private void LiftVCPop(List<ILExpression> outputInstructions)
         {
             switch(instructionIndex)
             {
@@ -135,7 +136,7 @@ namespace VMPDevirt.VMP
                 case 4:
                     WriteToVCPOffset();
                     ulong offset = GetVCPOffset();
-                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, new VirtualContextIndexOperand(offset)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, new VirtualContextIndexOperand(offset)));
                     break;
 
                 default:
@@ -150,7 +151,7 @@ namespace VMPDevirt.VMP
             sub rbp,8
             mov[rbp],rax
         */
-        private void LiftLConst(List<ILInstruction> outputInstructions)
+        private void LiftLConst(List<ILExpression> outputInstructions)
         {
             switch (instructionIndex)
             {
@@ -169,7 +170,7 @@ namespace VMPDevirt.VMP
                 case 3:
                     WriteToVSP();
                     ulong immediate = emulator.ReadRegister(ins.Op1Register);
-                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSH, ILOperand.Create(immediate)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(immediate)));
                     break;
 
                 default:
@@ -185,7 +186,7 @@ namespace VMPDevirt.VMP
             sub rbp,8
             mov [rbp],rax
         */
-        private void LiftVCPush(List<ILInstruction> outputInstructions)
+        private void LiftVCPush(List<ILExpression> outputInstructions)
         {
             switch (instructionIndex)
             {
@@ -200,7 +201,7 @@ namespace VMPDevirt.VMP
                 case 2:
                     ReadVCP();
                     ulong offset = GetVCPOffset();
-                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSH, new VirtualContextIndexOperand(offset)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualContextIndexOperand(offset)));
                     break;
 
                 case 3:
@@ -225,7 +226,7 @@ namespace VMPDevirt.VMP
             pushfq
             pop qword ptr [rbp]
         */
-        private void LiftVADD(List<ILInstruction> outputInstructions)
+        private void LiftVADD(List<ILExpression> outputInstructions)
         {
             switch (instructionIndex)
             {
@@ -241,12 +242,13 @@ namespace VMPDevirt.VMP
                     Expect(ins.Mnemonic == Mnemonic.Add && ins.Op0Kind == OpKind.Register && ins.Op1Kind == OpKind.Register);
                     var t0 = GetNewTemporary();
                     var t1 = GetNewTemporary();
-                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t0));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t1));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.ADD, t0, t1));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.COMPUTEFLAGS));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSH, t0));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSHFLAGS));
+                    var t2 = GetNewTemporary();
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.ADD, t2, t0, t1));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.COMPUTEFLAGS));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t2));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.PUSHFLAGS));
                     break;
 
                 case 3:
@@ -272,7 +274,7 @@ namespace VMPDevirt.VMP
             sub rbp,8
             mov [rbp],rax
         */
-        private void LiftPushVSP(List<ILInstruction> outputInstructions)
+        private void LiftPushVSP(List<ILExpression> outputInstructions)
         {
             switch (instructionIndex)
             {
@@ -290,7 +292,7 @@ namespace VMPDevirt.VMP
 
                 case 2:
                     WriteToVSP();
-                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSHVSP));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.PUSHVSP));
                     break;
 
                 default:
@@ -301,7 +303,7 @@ namespace VMPDevirt.VMP
         /*
             mov rbp, [rbp]
         */
-        private void LiftSetVSP(List<ILInstruction> outputInstructions)
+        private void LiftSetVSP(List<ILExpression> outputInstructions)
         {
             switch (instructionIndex)
             {
@@ -311,7 +313,7 @@ namespace VMPDevirt.VMP
                         ins.Op0Register == vmpState.VSP && ins.MemoryBase == vmpState.VSP;
                     Expect(isSetVSP);
 
-                    outputInstructions.Add(new ILInstruction(ILOpcode.SETVSP));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.SETVSP));
                     break;
 
                 default:
@@ -329,7 +331,7 @@ namespace VMPDevirt.VMP
             pushfq
             pop qword ptr [rbp]
         */
-        private void LiftVNAND(List<ILInstruction> outputInstructions)
+        private void LiftVNAND(List<ILExpression> outputInstructions)
         {
             switch (instructionIndex)
             {
@@ -353,12 +355,13 @@ namespace VMPDevirt.VMP
                     Expect(ins.Mnemonic == Mnemonic.And && ins.Op0Kind == OpKind.Register && ins.Op1Kind == OpKind.Register);
                     var t0 = GetNewTemporary();
                     var t1 = GetNewTemporary();
-                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t0));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t1));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.NAND, t0, t1));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.COMPUTEFLAGS));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSH, t0));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.PUSHFLAGS));
+                    var t2 = GetNewTemporary();
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.NAND, t2, t0, t1));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.COMPUTEFLAGS));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t2));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.PUSHFLAGS));
                     break;
 
                 case 5:
@@ -383,7 +386,7 @@ namespace VMPDevirt.VMP
             mov rax,[rcx]
             mov [rbp],rax
         */
-        private void LiftReadMem(List<ILInstruction> outputInstructions)
+        private void LiftReadMem(List<ILExpression> outputInstructions)
         {
             switch (instructionIndex)
             {
@@ -402,8 +405,8 @@ namespace VMPDevirt.VMP
                 case 2:
                     WriteToVSP();
                     var t0 = GetNewTemporary();
-                    outputInstructions.Add(new ILInstruction(ILOpcode.POP, t0));
-                    outputInstructions.Add(new ILInstruction(ILOpcode.READMEM, t0));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.READMEM, t0));
                     break;
 
                 default:
@@ -411,7 +414,7 @@ namespace VMPDevirt.VMP
             }
         }
 
-        private void LiftVMExit(List<ILInstruction> outputInstructions)
+        private void LiftVMExit(List<ILExpression> outputInstructions)
         {
             switch (instructionIndex)
             {
@@ -485,7 +488,7 @@ namespace VMPDevirt.VMP
 
                 case 17:
                     Expect(Mnemonic.Ret);
-                    outputInstructions.Add(new ILInstruction(ILOpcode.VMENTER));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.VMEXIT));
                     break;
 
                 default:
