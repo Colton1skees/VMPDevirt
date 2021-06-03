@@ -21,7 +21,7 @@ namespace VMPDevirt.VMP
 
         public FunctionTracer tracer;
 
-        bool blockUntilSingleStep = true;
+        private volatile bool blockUntilSingleStep = true;
 
 
         public VMPEmulator(Devirtualizer _devirtualizer)
@@ -49,14 +49,25 @@ namespace VMPDevirt.VMP
         public void SingleStep()
         {
             // TODO: FIX THREADING ISSUES
-            Thread.Sleep(1);
+            // Thread.Sleep(1);
+
+            ulong lastRIP = ReadRegister(Register.RIP);
             blockUntilSingleStep = false;
             while(blockUntilSingleStep == false)
             {
 
             }
 
-            Thread.Sleep(2);
+            while(lastRIP == ReadRegister(Register.RIP))
+            {
+                var insn = devirtualizer.Dna.Disassembler.DisassembleBytesAtBinaryLocation(lastRIP);
+                if(insn.ToString().Contains("movsb"))
+                {
+                    break;
+                }
+            }
+
+            //Thread.Sleep(1);
         }
 
         public void SingleStepUntil(ulong address)

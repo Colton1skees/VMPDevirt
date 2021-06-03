@@ -365,7 +365,6 @@ namespace VMPDevirt.VMP
                     WriteToVSP();
                     break;
 
-
                 case 6:
                     PushFlags();
                     break;
