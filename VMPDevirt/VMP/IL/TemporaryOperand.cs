@@ -17,7 +17,7 @@ namespace VMPDevirt.VMP.IL
 
         public override string ToString()
         {
-            return "t" + ID.ToString();
+            return "%t" + ID.ToString();
         }
     }
 }

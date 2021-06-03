@@ -37,6 +37,9 @@ namespace VMPDevirt.VMP.ILExpr
         NAND,
         ROL,
         ROR,
+
+        // MISC:
+        MOV
     }
 
     public enum ExprType
@@ -96,7 +99,8 @@ namespace VMPDevirt.VMP.ILExpr
 
         public string GetOpCodeWithSize()
         {
-            return this.OpCode.ToString() + ":" + this.GetSize();
+            //return this.OpCode.ToString() + ":" + this.GetSize();
+            return String.Format("{0} i{1}*", this.OpCode, this.GetSize());
         }
 
         public override string ToString()

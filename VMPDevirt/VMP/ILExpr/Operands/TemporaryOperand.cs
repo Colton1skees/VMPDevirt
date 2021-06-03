@@ -25,7 +25,7 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 
         public override string ToString()
         {
-            return "t" + ID.ToString();
+            return "%t" + ID.ToString();
         }
     }
 }
