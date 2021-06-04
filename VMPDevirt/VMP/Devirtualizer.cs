@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using VMPDevirt.Runtrace;
 using VMPDevirt.VMP.ILExpr;
+using VMPDevirt.VMP.Routine;
 
 namespace VMPDevirt.VMP
 {
@@ -41,7 +42,8 @@ namespace VMPDevirt.VMP
             emulator.TraceFunction(vmEntry);
             VMPLifter lifter = new VMPLifter(this, emulator);
 
-            List<ILExpression> ilInstructions = new List<ILExpression>();
+            ILRoutine routine = new ILRoutine(0);
+            var block = routine.AllocateEmptyBlock(0);
             while(true)
             {
 
@@ -50,22 +52,23 @@ namespace VMPDevirt.VMP
 
                 if (IsDispatcherInstruction(instruction))
                 {
+                    // Single step into the handler, parse the CFG, and optimize it to a pattern matchable state.
                     emulator.SingleStep();
                     var handlerGraph = Dna.FunctionParser.GetControlFlowGraph(emulator.ReadRegister(Register.RIP));
-                    var handlerInstructions = handlerOptimizer.OptimizeHandler(handlerGraph.GetInstructions().ToList());
+                    var nativeHandlerInstructions = handlerOptimizer.OptimizeHandler(handlerGraph.GetInstructions().ToList());
 
-
-                    var liftedInstructions = lifter.LiftHandlerToIL(handlerInstructions);
-                    foreach(var liftedInstruction in liftedInstructions)
+                    // Lift the instructions and append them to the routine's only basic block.
+                    var liftedExpressions = lifter.LiftHandlerToIL(nativeHandlerInstructions);
+                    block.Expressions.AddRange(liftedExpressions);
+                    foreach (var expression in liftedExpressions)
                     {
-                        liftedInstruction.Address = handlerInstructions.First().IP;
+                        expression.Address = nativeHandlerInstructions.First().IP;
                     }
-                    ilInstructions.AddRange(liftedInstructions);
 
-
-                    foreach(var ilInstruction in ilInstructions)
+                    // Log expressions to console for quick error diagnosing...
+                    foreach(var expression in block.Expressions)
                     {
-                        Console.WriteLine("ILInstruction({0}): {1}", ilInstruction.Address.ToString("X"), ilInstruction);
+                        Console.WriteLine("ILInstruction({0}): {1}", expression.Address.ToString("X"), expression);
                     }
                 }
 

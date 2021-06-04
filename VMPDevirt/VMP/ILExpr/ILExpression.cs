@@ -62,6 +62,12 @@ namespace VMPDevirt.VMP.ILExpr
 
         public ulong Address { get; set; }
 
+        private readonly int internalID;
+
+        private static int globalIDCount;
+
+        private readonly object globalIDLock = new object();
+
         public int OpCount => GetOperandCount();
 
         public int Size => GetSize();
@@ -73,17 +79,22 @@ namespace VMPDevirt.VMP.ILExpr
             OpCode = _opCode;
             LHS = _lhs;
             RHS = _rhs;
-        }
 
-
-        public virtual int GetSize()
-        {
-            return Operands.Select(x => x.Size).Distinct().Single();
+            lock(globalIDLock)
+            {
+                globalIDCount++;
+                internalID = globalIDCount;
+            }
         }
 
         public int GetOperandCount()
         {
             return GetOperands().Count;
+        }
+
+        public virtual int GetSize()
+        {
+            return Operands.Select(x => x.Size).Distinct().Single();
         }
 
         public IReadOnlyList<ExprOperand> GetOperands()
@@ -106,10 +117,35 @@ namespace VMPDevirt.VMP.ILExpr
             return RHS != null;
         }
 
+        public bool IsAssignmentExpression()
+        {
+            return this.Type == ExprType.Assignment;
+        }
+
+        public bool IsStackExpression()
+        {
+            return this.Type == ExprType.Stack;
+        }
+
         public string GetOpCodeWithSize()
         {
             //return this.OpCode.ToString() + ":" + this.GetSize();
             return String.Format("{0} i{1}*", this.OpCode, this.GetSize());
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+                return false;
+
+            if (obj.GetType() != typeof(ILExpression) && !obj.GetType().IsSubclassOf(typeof(ILExpression)))
+                return false;
+
+            ILExpression expr = (ILExpression)obj;
+            if (expr.internalID != this.internalID)
+                return false;
+
+            return true;
         }
 
         public override string ToString()
