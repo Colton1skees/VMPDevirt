@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VMPDevirt.Optimization.Passes;
 using VMPDevirt.Runtrace;
 using VMPDevirt.VMP.ILExpr;
 using VMPDevirt.VMP.Routine;
@@ -65,10 +66,34 @@ namespace VMPDevirt.VMP
                         expression.Address = nativeHandlerInstructions.First().IP;
                     }
 
+
                     // Log expressions to console for quick error diagnosing...
                     foreach(var expression in block.Expressions)
                     {
                         Console.WriteLine("ILInstruction({0}): {1}", expression.Address.ToString("X"), expression);
+                    }
+
+                    // Pass the lifted function into various optimization passes
+                    if(liftedExpressions.Any(x => x.OpCode == ExprOpCode.VMEXIT))
+                    {
+                        Console.WriteLine("Finished lifting up until vexit...");
+
+                        Console.WriteLine("PRE-OPTIMIZATION: ");
+                        foreach (var expression in block.Expressions)
+                        {
+                            Console.WriteLine("ILInstruction({0}): {1}", expression.Address.ToString("X"), expression);
+                        }
+                        PassStackToAssignment pass = new PassStackToAssignment();
+                        pass.Execute(block);
+                        Console.WriteLine();
+                        Console.WriteLine("POST-OPTIMIZATION: ");
+                        foreach (var expression in block.Expressions)
+                        {
+                            Console.WriteLine("ILInstruction({0}): {1}", expression.Address.ToString("X"), expression);
+                        }
+
+                        Console.ReadLine();
+
                     }
                 }
 

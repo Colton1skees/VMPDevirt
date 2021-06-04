@@ -28,7 +28,7 @@ namespace VMPDevirt.VMP
 
         private Dictionary<Action<List<ILExpression>>, int> lifterFunctions;
 
-        private int lastTemporaryID;
+        public int TemporaryCount { get; set; }
 
         public VMPLifter(Devirtualizer _devirt, VMPEmulator _emulator)
         {
@@ -643,8 +643,8 @@ namespace VMPDevirt.VMP
         /// <returns></returns>
         private TemporaryOperand GetNewTemporary(int size)
         {
-            int id = lastTemporaryID;
-            lastTemporaryID++;
+            int id = TemporaryCount;
+            TemporaryCount++;
 
             return new TemporaryOperand(id, size);
         }

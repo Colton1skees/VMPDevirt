@@ -1,8 +1,10 @@
 ﻿using Rivers;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using VMPDevirt.VMP.ILExpr;
+using VMPDevirt.VMP.ILExpr.Operands;
 
 namespace VMPDevirt.VMP.Routine
 {
@@ -38,7 +40,7 @@ namespace VMPDevirt.VMP.Routine
         /// <returns></returns>
         public ILBlock AllocateEmptyBlock(ulong address)
         {
-            // Create the basic block
+            // Create and initialize the basic block
             ILBlock block = new ILBlock();
             block.Address = address;
 
@@ -46,7 +48,23 @@ namespace VMPDevirt.VMP.Routine
             Node node = new Node("0x" + address.ToString("X"));
             node.UserData.Add(address, block);
             Nodes.Add(node);
+
+            // Update block and return it
+            block.Node = node;
+            block.ParentRoutine = this;
             return block;
+        }
+
+        public TemporaryOperand AllocateTemporary(int size)
+        {
+            int temporaryIndex = 0;
+            var temporaries = this.GetBlocks().SelectMany(x => x.Expressions).SelectMany(x => x.Operands).Where(x => x.Type == ExprOperandType.Temporary);
+            if(temporaries.Any())
+            {
+                temporaryIndex = temporaries.Select(x => x.Temporary.ID).Max();
+            }
+
+            return new TemporaryOperand(temporaryIndex, size);
         }
     }
 }

@@ -3,18 +3,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using VMPDevirt.VMP.ILExpr;
+using VMPDevirt.VMP.Routine;
 
 namespace VMPDevirt.Optimization.Passes
 {
-
     public class OptimizedPushPopSequence
     {
+        /// <summary>
+        /// Gets or sets the original push expression in the push/pop sequence.
+        /// </summary>
         public ILExpression PushExpr { get; set; }
 
+        /// <summary>
+        /// Gets or sets the original pop expression in the push/pop sequence.
+        /// </summary>
         public ILExpression PopExpr { get; set; }
 
         /// <summary>
-        /// Represents the optimized assignment statement which the push/pop sequence was transformed into.
+        /// Gets or sets the optimized assignment statement which the push/pop sequence was transformed into.
         /// </summary>
         public ILExpression OptimizedAssignment { get; set; }
     }
@@ -33,18 +39,26 @@ namespace VMPDevirt.Optimization.Passes
     {
         private Stack<ILExpression> pushExpressions;
 
-        public void Execute(List<ILExpression> expressions)
-        {
+        private List<OptimizedPushPopSequence> sequences = new List<OptimizedPushPopSequence>();
 
+        private ILBlock block;
+
+        public void Execute(ILBlock block)
+        {
             pushExpressions = new Stack<ILExpression>();
-            foreach (var expr in expressions)
+            sequences = new List<OptimizedPushPopSequence>();
+            this.block = block;
+
+            foreach (var expr in block.Expressions)
             {
                 if (expr.OpCode == ExprOpCode.PUSH)
                     TrackPush(expr);
 
                 else if (expr.OpCode == ExprOpCode.POP)
-                    TrackPush(expr);
+                    TrackPop(expr);
             }
+
+            UpdateBlockWithOptimizations();
         }
 
         private void TrackPush(ILExpression pushExpr)
@@ -54,25 +68,47 @@ namespace VMPDevirt.Optimization.Passes
 
         private void TrackPop(ILExpression popExpr)
         {
+            // If we encounter a pop without any prior tracked pushes, then it is a cross-block access (or invalid optimization...).
             if (!pushExpressions.Any())
             {
-                OptimizationLogger.LogWeirdBehavior("Encountered POP with unknown source. This most likely means that the current block accesses an item from outside of the block");
+                OptimizationLogger.LogWeirdBehavior("Encountered POP with unknown source. This most likely means that we encountered a cross-block access (or an invalid optimization..)");
             }
 
+            // If we encouter a push and pop sequence, then we create an optimized assignment sequence and store the input expressions for later removal.
             else
             {
-
+                OptimizedPushPopSequence optimizedSequence = new OptimizedPushPopSequence();
+                optimizedSequence.PushExpr = pushExpressions.Pop();
+                optimizedSequence.PopExpr = popExpr;
+                optimizedSequence.OptimizedAssignment = new AssignmentExpression(ExprOpCode.COPY, popExpr.LHS, optimizedSequence.PushExpr.LHS);
+                sequences.Add(optimizedSequence);
             }
 
         }
 
         /// <summary>
-        /// 
+        /// Converts a push pop sequence into a single assignment
         /// </summary>
         /// <returns></returns>
-        public ILExpression ConvertPushPopSequenceToTransfer(ILExpression pushExpr, ILExpression popExpr)
+        public OptimizedPushPopSequence GenerateOptimizedPushPopSequence(ILExpression pushExpr, ILExpression popExpr)
         {
-            return null;
+            OptimizedPushPopSequence optimizedSequence = new OptimizedPushPopSequence();
+            optimizedSequence.PushExpr = pushExpr;
+            optimizedSequence.PopExpr = popExpr;
+            optimizedSequence.OptimizedAssignment = new AssignmentExpression(ExprOpCode.COPY, popExpr.LHS, optimizedSequence.PushExpr.LHS);
+            return optimizedSequence;
+        }
+
+        /// <summary>
+        /// Takes the optimized sequences/assignments and updates the basic block to include the changes
+        /// </summary>
+        public void UpdateBlockWithOptimizations()
+        {
+            foreach(var sequence in sequences)
+            {
+                block.RemoveExpression(sequence.PushExpr);
+                block.ReplaceExpression(sequence.PopExpr, sequence.OptimizedAssignment);
+            }
         }
     }
 }
