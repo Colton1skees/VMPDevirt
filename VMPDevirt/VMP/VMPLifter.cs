@@ -52,7 +52,7 @@ namespace VMPDevirt.VMP
             // Create a collection for the results of each lifter
             var possibleLifters = lifterFunctions.Where(x => x.Value == instructions.Count);
             Dictionary<int, List<ILExpression>> liftedCollections = new Dictionary<int, List<ILExpression>>();
-            for(int i = 0; i < possibleLifters.Count(); i++)
+            for (int i = 0; i < possibleLifters.Count(); i++)
             {
                 liftedCollections.Add(i, new List<ILExpression>());
             }
@@ -80,10 +80,10 @@ namespace VMPDevirt.VMP
                             outputList.Add(null);
                         }
                     }
-                    
+
                 }
 
-                if(instructionIndex < instructions.Count - 1)
+                if (instructionIndex < instructions.Count - 1)
                 {
                     emulator.SingleStepUntil(instructions[instructionIndex + 1].IP);
                 }
@@ -91,18 +91,18 @@ namespace VMPDevirt.VMP
             }
 
             var matches = liftedCollections.Where(x => !x.Value.Any(y => y == null)).ToList();
-            if(matches.Count() == 0)
+            if (matches.Count() == 0)
             {
                 // TODO: output handler instructions in exception
                 throw new InvalidHandlerMatchException(String.Format("Failed to lift handler: no matches found."));
             }
 
-            else if(matches.Count() > 1)
+            else if (matches.Count() > 1)
             {
                 throw new InvalidHandlerMatchException(String.Format("Failed to lift handler: Found {0} matches when we expected 1.", matches.Count()));
             }
 
-           return matches.Single().Value;
+            return matches.Single().Value;
         }
 
 
@@ -115,7 +115,7 @@ namespace VMPDevirt.VMP
         */
         private void LiftVCPop(List<ILExpression> outputInstructions)
         {
-            switch(instructionIndex)
+            switch (instructionIndex)
             {
                 case 0:
                     ReadVIP();
@@ -251,7 +251,7 @@ namespace VMPDevirt.VMP
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.ADD, t2, t0, t1));
                     outputInstructions.Add(new SpecialExpression(ExprOpCode.COMPUTEFLAGS));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t2));
-                    outputInstructions.Add(new SpecialExpression(ExprOpCode.PUSHFLAGS));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
                     break;
 
                 case 3:
@@ -295,7 +295,9 @@ namespace VMPDevirt.VMP
 
                 case 2:
                     WriteToVSP();
-                    outputInstructions.Add(new SpecialExpression(ExprOpCode.PUSHVSP));
+                    if (ins.Op1Register.GetSizeInBits() != 64)
+                        throw new InvalidHandlerMatchException();
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.VSP)));
                     break;
 
                 default:
@@ -316,7 +318,14 @@ namespace VMPDevirt.VMP
                         ins.Op0Register == vmpState.VSP && ins.MemoryBase == vmpState.VSP;
                     Expect(isSetVSP);
 
-                    outputInstructions.Add(new SpecialExpression(ExprOpCode.SETVSP));
+                    if (ins.Op0Register.GetSizeInBits() != 64)
+                        throw new Exception("TODO: Handle pushing ranges of VSP");
+
+                    var size = ins.Op0Register.GetSizeInBits();
+                    var t0 = GetNewTemporary(size);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t0));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COPY, new VirtualRegisterOperand(VirtualRegister.VSP), t0));
                     break;
 
                 default:
@@ -365,7 +374,7 @@ namespace VMPDevirt.VMP
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.NAND, t2, t0, t1));
                     outputInstructions.Add(new SpecialExpression(ExprOpCode.COMPUTEFLAGS));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t2));
-                    outputInstructions.Add(new SpecialExpression(ExprOpCode.PUSHFLAGS));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
                     break;
 
                 case 5:
@@ -410,8 +419,10 @@ namespace VMPDevirt.VMP
                     WriteToVSP();
                     var size = ins.Op1Register.GetSizeInBits();
                     var t0 = GetNewTemporary(size);
+                    var t1 = GetNewTemporary(size);
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
-                    outputInstructions.Add(new SpecialExpression(ExprOpCode.READMEM, t0));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.READMEM, t1, t0));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t1)); // this push may not be right???
                     break;
 
                 default:
@@ -612,17 +623,17 @@ namespace VMPDevirt.VMP
             return emulator.ReadRegister(ins.Op1Register);
         }
 
-        
+
         private void Expect(Mnemonic mnemonic, object operandOne = null, object operandTwo = null)
         {
             bool result = ins.Is(mnemonic, operandOne, operandTwo);
             Expect(result);
         }
-        
+
 
         private void Expect(bool input)
         {
-            if(!input)
+            if (!input)
                 throw new Exception("Error matching handler. Failed to match instruction");
         }
 

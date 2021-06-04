@@ -11,13 +11,9 @@ namespace VMPDevirt.VMP.ILExpr
 
         public ExprOperand DestinationOperand { get; set; }
 
-        public AssignmentExpression(ExprOpCode _opCode, ExprOperand _destination, ExprOperand _lhs = null, ExprOperand _rhs = null)
+        public AssignmentExpression(ExprOpCode _opCode, ExprOperand _destination, ExprOperand _lhs = null, ExprOperand _rhs = null) : base(_opCode, _lhs, _rhs)
         {
-            OpCode = _opCode;
             DestinationOperand = _destination;
-            LHS = _lhs;
-            RHS = _rhs;
-
             if(!IsValidDestination())
             {
                 throw new Exception(String.Format("Failed to create AssignmentExpression. The operand {0} is not a valid destination operand.", DestinationOperand));
@@ -34,7 +30,12 @@ namespace VMPDevirt.VMP.ILExpr
                 return false;
 
             var type = DestinationOperand.Type;
-            return type == ExprOperandType.Register || type == ExprOperandType.Temporary || type == ExprOperandType.VirtualContextIndex;
+            return type != ExprOperandType.Immediate;
+        }
+
+        public override int GetSize()
+        {
+            return DestinationOperand.GetSize();
         }
 
         public override string ToString()

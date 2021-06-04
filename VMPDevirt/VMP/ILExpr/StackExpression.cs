@@ -9,10 +9,9 @@ namespace VMPDevirt.VMP.ILExpr
     {
         public override ExprType Type => ExprType.Stack;
 
-        public StackExpression(ExprOpCode _opCode, ExprOperand _lhs)
+        public StackExpression(ExprOpCode _opCode, ExprOperand _lhs) : base(_opCode, _lhs)
         {
             OpCode = _opCode;
-            LHS = _lhs;
         }
     }
 }

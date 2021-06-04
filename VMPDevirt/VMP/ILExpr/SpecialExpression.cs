@@ -7,11 +7,9 @@ namespace VMPDevirt.VMP.ILExpr
 {
     public class SpecialExpression : ILExpression
     {
-        public SpecialExpression(ExprOpCode _opCode, ExprOperand _lhs = null, ExprOperand _rhs = null)
+        public SpecialExpression(ExprOpCode _opCode, ExprOperand _lhs = null, ExprOperand _rhs = null) : base(_opCode, _lhs, _rhs)
         {
-            OpCode = _opCode;
-            LHS = _lhs;
-            RHS = _rhs;
+
         }
 
         public override ExprType Type => ExprType.Special;

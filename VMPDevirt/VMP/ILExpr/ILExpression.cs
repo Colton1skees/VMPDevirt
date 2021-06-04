@@ -39,7 +39,8 @@ namespace VMPDevirt.VMP.ILExpr
         ROR,
 
         // MISC:
-        MOV
+        MOV,
+        COPY
     }
 
     public enum ExprType
@@ -66,6 +67,14 @@ namespace VMPDevirt.VMP.ILExpr
         public int Size => GetSize();
 
         public IReadOnlyList<ExprOperand> Operands => GetOperands();
+
+        protected ILExpression(ExprOpCode _opCode, ExprOperand _lhs = null, ExprOperand _rhs = null)
+        {
+            OpCode = _opCode;
+            LHS = _lhs;
+            RHS = _rhs;
+        }
+
 
         public virtual int GetSize()
         {

@@ -11,6 +11,7 @@ namespace VMPDevirt.VMP.ILExpr.Operands
         Register,
         Temporary,
         VirtualContextIndex,
+        VirtualRegisterOperand,
     }
 
     public abstract class ExprOperand

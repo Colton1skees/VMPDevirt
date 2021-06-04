@@ -78,18 +78,3 @@ pop rdx
 pop rcx
 pop r14
 ret
-
-
-
-foreach(var lifter in lifters)
-                {
-                    try
-                    {
-                        var liftedInstructon = lifter(instruction, i);
-                    }
-
-                    catch(Exception ex)
-                    {
-
-                    }
-                }
