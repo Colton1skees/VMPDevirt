@@ -79,7 +79,7 @@ namespace VMPDevirt.VMP
                 // If a register is volatile, then assemble instructions to discard the value after the execution of the VM handler. 
                 if (reg != devirtualizer.VMState.VCP && reg != devirtualizer.VMState.VIP && reg != devirtualizer.VMState.VSP && reg != devirtualizer.VMState.VRK)
                 {
-                    assembler.mov(reg.GetReg64(), 0);
+                    assembler.mov(reg.GetReg64(), 0x1234568888);
                 }
             }
 

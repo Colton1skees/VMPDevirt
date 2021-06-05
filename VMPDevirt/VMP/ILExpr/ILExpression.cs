@@ -107,6 +107,10 @@ namespace VMPDevirt.VMP.ILExpr
             return operands.AsReadOnly();
         }
 
+        public AssignmentExpression Assignment => (AssignmentExpression)this;
+
+        public StackExpression Stack => (StackExpression)this;
+
         public bool HasLHS()
         {
             return LHS != null;

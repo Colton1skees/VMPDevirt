@@ -23,6 +23,21 @@ namespace VMPDevirt.VMP.ILExpr.Operands
             return size;
         }
 
+        public override bool Equals(object obj)
+        {
+            if (obj == null)
+                return false;
+
+            if (obj.GetType() != typeof(TemporaryOperand))
+                return false;
+
+            TemporaryOperand expr = (TemporaryOperand)obj;
+            if (expr.ID != this.ID)
+                return false;
+
+            return true;
+        }
+
         public override string ToString()
         {
             return "%t" + ID.ToString();

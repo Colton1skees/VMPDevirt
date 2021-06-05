@@ -54,6 +54,14 @@ namespace VMPDevirt.VMP.ILExpr.Operands
             }
         }
 
+        public VirtualRegisterOperand VirtualRegister
+        {
+            get
+            {
+                return (VirtualRegisterOperand)this;
+            }
+        }
+
         public bool IsImmediate()
         {
             return Type == ExprOperandType.Immediate;
@@ -72,6 +80,11 @@ namespace VMPDevirt.VMP.ILExpr.Operands
         public bool IsVirtualContextIndex()
         {
             return Type == ExprOperandType.VirtualContextIndex;
+        }
+
+        public bool IsVirtualRegister()
+        {
+            return Type == ExprOperandType.VirtualRegisterOperand;
         }
 
         public static ExprOperand Create(ulong value, int size)

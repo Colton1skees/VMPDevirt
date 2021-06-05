@@ -246,10 +246,11 @@ namespace VMPDevirt.VMP
                     var t0 = GetNewTemporary(size);
                     var t1 = GetNewTemporary(size);
                     var t2 = GetNewTemporary(size);
+  
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.ADD, t2, t0, t1));
-                    outputInstructions.Add(new SpecialExpression(ExprOpCode.COMPUTEFLAGS));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, new VirtualRegisterOperand(VirtualRegister.RFLAGS), t2));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t2));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
                     break;
@@ -323,9 +324,11 @@ namespace VMPDevirt.VMP
 
                     var size = ins.Op0Register.GetSizeInBits();
                     var t0 = GetNewTemporary(size);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
-                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t0));
+
+                    
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.READMEM, t0, new VirtualRegisterOperand(VirtualRegister.VSP)));
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.COPY, new VirtualRegisterOperand(VirtualRegister.VSP), t0));
+                    
                     break;
 
                 default:
@@ -372,7 +375,7 @@ namespace VMPDevirt.VMP
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.NAND, t2, t0, t1));
-                    outputInstructions.Add(new SpecialExpression(ExprOpCode.COMPUTEFLAGS));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, new VirtualRegisterOperand(VirtualRegister.RFLAGS), t2));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t2));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
                     break;
@@ -435,76 +438,97 @@ namespace VMPDevirt.VMP
             switch (instructionIndex)
             {
                 case 0:
+                    // In reality this should lift to mov rsp, rbp. However, for now we are lifting it as a copy of the IR VSP
                     Expect(Mnemonic.Mov, Register.RSP, vmpState.VSP);
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COPY, ExprOperand.Create(Register.RSP), new VirtualRegisterOperand(VirtualRegister.VSP)));
                     break;
 
                 case 1:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 2:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 3:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 4:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 5:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 6:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 7:
                     Expect(Mnemonic.Popfq);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
                     break;
 
                 case 8:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 9:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 10:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 11:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 12:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 13:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 14:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 15:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
 
                 case 16:
                     Expect(Mnemonic.Pop);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
                     break;
+
 
                 case 17:
                     Expect(Mnemonic.Ret);
-                    outputInstructions.Add(new SpecialExpression(ExprOpCode.VMEXIT));
+                    var t0 = GetNewTemporary(64);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.VMEXIT, t0));
                     break;
 
                 default:

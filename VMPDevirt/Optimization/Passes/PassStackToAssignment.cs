@@ -49,13 +49,36 @@ namespace VMPDevirt.Optimization.Passes
             sequences = new List<OptimizedPushPopSequence>();
             this.block = block;
 
+            List<ILExpression> expressionsToRemove = new List<ILExpression>();
             foreach (var expr in block.Expressions)
             {
                 if (expr.OpCode == ExprOpCode.PUSH)
+                {
                     TrackPush(expr);
+                }
 
                 else if (expr.OpCode == ExprOpCode.POP)
+                {
                     TrackPop(expr);
+                }
+
+                else if(expr.OpCode == ExprOpCode.READMEM)
+                {
+                    var pushExpr = pushExpressions.Pop();
+                    expressionsToRemove.Add(pushExpr);
+                    // TODO: Validate if the push expression is actually used....
+                   
+                }
+            }
+
+            foreach(var expr in expressionsToRemove)
+            {
+                block.RemoveExpression(expr);
+            }
+
+            if(pushExpressions.Any())
+            {
+                throw new Exception(String.Format("Failed to optimize stack assignments. Encountered {0} unhandled pops", pushExpressions.Count));
             }
 
             UpdateBlockWithOptimizations();

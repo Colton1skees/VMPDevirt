@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using VMPDevirt.Optimization.Passes;
 using VMPDevirt.Runtrace;
 using VMPDevirt.VMP.ILExpr;
+using VMPDevirt.VMP.ILExpr.Operands;
 using VMPDevirt.VMP.Routine;
 
 namespace VMPDevirt.VMP
@@ -45,7 +46,35 @@ namespace VMPDevirt.VMP
 
             ILRoutine routine = new ILRoutine(0);
             var block = routine.AllocateEmptyBlock(0);
-            while(true)
+            // horrific hardcoded VMEnter to save time:
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R14)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RCX)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RDX)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R13)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R8)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RSI)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R15)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RAX)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R9)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS))); // FLAGS
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R11)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R10)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RDI)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RBX)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R12)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RBP)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(0, 64)));
+
+            /*
+            var entryInstructions = handlerOptimizer.OptimizeHandler(Dna.FunctionParser.GetControlFlowGraph(0x14009B17D).GetInstructions().ToList());
+            Console.WriteLine("vmentry: ");
+            foreach(var entry in entryInstructions)
+            {
+                Console.WriteLine(entry);
+            }
+            Console.ReadLine();
+            */
+            while (true)
             {
 
                 var rip = emulator.ReadRegister(Register.RIP);
@@ -85,6 +114,9 @@ namespace VMPDevirt.VMP
                         }
                         PassStackToAssignment pass = new PassStackToAssignment();
                         pass.Execute(block);
+
+                        var copyPropPass = new PassCopyPropagation();
+                        copyPropPass.Execute(block);
                         Console.WriteLine();
                         Console.WriteLine("POST-OPTIMIZATION: ");
                         foreach (var expression in block.Expressions)
