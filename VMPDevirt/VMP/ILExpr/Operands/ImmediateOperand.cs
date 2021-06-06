@@ -30,6 +30,8 @@ namespace VMPDevirt.VMP.ILExpr.Operands
             private set { immValue = (ulong)value; }
         }
 
+        public override bool SupportsSSA => false;
+
         public ImmediateOperand(ulong _U64, int _size)
         {
             U64 = _U64;

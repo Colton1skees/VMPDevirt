@@ -40,7 +40,7 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 
         public override string ToString()
         {
-            return "%t" + ID.ToString();
+            return String.Format("%t{0}.{1}", ID, ValueNumber);
         }
     }
 }

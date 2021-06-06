@@ -62,13 +62,23 @@ namespace VMPDevirt.Optimization.Passes
                     TrackPop(expr);
                 }
 
+                
                 else if (expr.OpCode == ExprOpCode.READMEM)
                 {
-                    var pushExpr = pushExpressions.Pop();
-                    expressionsToRemove.Add(pushExpr);
+                    //var pushExpr = pushExpressions.Pop();
+                   // expressionsToRemove.Add(pushExpr);
                     // TODO: Validate if the push expression is actually used....
 
                 }
+                
+
+                
+                if(expr.IsAssignmentExpression() && expr.Op1.IsVirtualRegister() && expr.Op1.VirtualRegister.Name == "vsp")
+                {
+                    var pushExpr = pushExpressions.Pop();
+                    // expressionsToRemove.Add(pushExpr);
+                }
+                
             }
 
 
@@ -79,7 +89,7 @@ namespace VMPDevirt.Optimization.Passes
 
             if (pushExpressions.Any())
             {
-                throw new Exception(String.Format("Failed to optimize stack assignments. Encountered {0} unhandled pops", pushExpressions.Count));
+                throw new Exception(String.Format("Failed to optimize stack assignments. Encountered {0} unhandled pushes", pushExpressions.Count));
             }
 
             UpdateBlockWithOptimizations();

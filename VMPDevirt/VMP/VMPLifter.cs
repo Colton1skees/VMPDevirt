@@ -164,7 +164,7 @@ namespace VMPDevirt.VMP
                             int unwrittenSize = 63 - indexFirstUnwrittenBit;
                             var slice = BuildSliceForOperand(vReg, indexFirstUnwrittenBit, unwrittenSize);
                             var t1 = GetNewTemporary(size);
-                            slice.DestinationOperand = t1;
+                            slice.Op1 = t1;
                             outputInstructions.Add(slice);
 
                             // Concatenate the slices
@@ -186,7 +186,7 @@ namespace VMPDevirt.VMP
                             int unwrittenSize = byteOffsetFromStart * 8;
                             var slice = BuildSliceForOperand(vReg, indexFirstUnwrittenBit, unwrittenSize);
                             var t1 = GetNewTemporary(size);
-                            slice.DestinationOperand = t1;
+                            slice.Op1 = t1;
 
                             // Concatenate the slices
                             outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMBINE, vReg, t0, t1));
@@ -900,7 +900,7 @@ namespace VMPDevirt.VMP
             // Identify the start/end indices for slicing
             var indexLastWrittenBit = startBitIndex + (sizeInBits);
 
-            var slice = new AssignmentExpression(ExprOpCode.SLICE, inputOperand, inputOperand, ExprOperand.CreateImmediate(startBitIndex, 8), ExprOperand.CreateImmediate(indexLastWrittenBit, 8));
+            var slice = new AssignmentExpression(ExprOpCode.SLICE, inputOperand, ExprOperand.CreateImmediate(startBitIndex, 8), ExprOperand.CreateImmediate(indexLastWrittenBit, 8));
             return slice;
         }
     }

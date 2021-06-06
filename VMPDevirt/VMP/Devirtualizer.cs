@@ -40,7 +40,8 @@ namespace VMPDevirt.VMP
             VMPEmulator emulator = new VMPEmulator(this);
 
             // Start emulating the virtualized function. Note: The emulator actually only implements single step functionality, so this only starts executing the first instruction.
-            ulong vmEntry = 0x1400FD443;
+            // ulong vmEntry = 0x1400FD443;
+            ulong vmEntry = 0x1400FD439;
             emulator.TraceFunction(vmEntry);
             VMPLifter lifter = new VMPLifter(this, emulator);
 
@@ -64,16 +65,9 @@ namespace VMPDevirt.VMP
             block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.R12)));
             block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.RBP)));
             block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateImmediate(0, 64)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateImmediate(0, 64)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateImmediate(0, 64)));
 
-            /*
-            var entryInstructions = handlerOptimizer.OptimizeHandler(Dna.FunctionParser.GetControlFlowGraph(0x14009B17D).GetInstructions().ToList());
-            Console.WriteLine("vmentry: ");
-            foreach(var entry in entryInstructions)
-            {
-                Console.WriteLine(entry);
-            }
-            Console.ReadLine();
-            */
             while (true)
             {
 
@@ -106,10 +100,11 @@ namespace VMPDevirt.VMP
                     if(liftedExpressions.Any(x => x.OpCode == ExprOpCode.VMEXIT))
                     {
 
+                         block.Expressions = block.Expressions.Take(135).ToList();
                          // For now we placeholder pop to account for the return address which we didn't model being pushed in vmenter.
                          // TODO: validate that this is actually needed & we didn't screw up when translating vmp -> ILExpr (ReadMem/SetVSP/ReadVSP being the most likely culprit).
                          Console.WriteLine("note: we inserted a temporary placeholder pop to fix up the stack to temporary pass");
-                         block.Expressions.Insert(block.Expressions.Count - 2, new StackExpression(ExprOpCode.POP, new TemporaryOperand(1234, 64)));
+                        // block.Expressions.Insert(block.Expressions.Count - 2, new StackExpression(ExprOpCode.POP, new TemporaryOperand(1234, 64)));
 
                         Console.WriteLine("Finished lifting up until vexit...");
 
@@ -121,14 +116,18 @@ namespace VMPDevirt.VMP
                         PassStackToAssignment pass = new PassStackToAssignment();
                         pass.Execute(block);
 
-                        var copyPropPass = new PassCopyPropagation();
-                        copyPropPass.Execute(block);
+                        //var copyPropPass = new PassCopyPropagation();
+                        // copyPropPass.Execute(block);
                         Console.WriteLine();
+                        var ssaBuilder = new SSABuilder();
+                        ssaBuilder.Compute(routine);
                         Console.WriteLine("POST-OPTIMIZATION: ");
+
                         foreach (var expression in block.Expressions)
                         {
                             Console.WriteLine("ILInstruction({0}): {1}", expression.Address.ToString("X"), expression);
                         }
+
 
                         Console.ReadLine();
 

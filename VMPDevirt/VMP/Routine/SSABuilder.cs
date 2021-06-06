@@ -6,5 +6,9 @@ namespace VMPDevirt.VMP.Routine
 {
     public class SSABuilder
     {
+        public void Compute(ILRoutine routine)
+        {
+
+        }
     }
 }

@@ -30,7 +30,7 @@ namespace VMPDevirt.Optimization.Passes
             dataFlow = new Dictionary<TemporaryOperand, TemporaryDataFlow>();
 
             var operandTemporaries = block.Expressions.SelectMany(x => x.Operands).Where(x => x.IsTemporary()).Cast<TemporaryOperand>().ToList();
-            var alternativeTemporaries = block.Expressions.Where(x => x.IsAssignmentExpression() && x.Assignment.DestinationOperand.IsTemporary()).Select(x => x.Assignment.DestinationOperand.Temporary);
+            var alternativeTemporaries = block.Expressions.Where(x => x.IsAssignmentExpression() && x.Assignment.Op1.IsTemporary()).Select(x => x.Assignment.Op1.Temporary);
 
             operandTemporaries.AddRange(alternativeTemporaries);
             operandTemporaries = operandTemporaries.Distinct().ToList();
@@ -58,10 +58,10 @@ namespace VMPDevirt.Optimization.Passes
         /// <param name="expr"></param>
         private void TrackAssignment(ILExpression expr)
         {
-            if(expr.IsAssignmentExpression() && expr.Assignment.DestinationOperand.IsTemporary())
+            if(expr.IsAssignmentExpression() && expr.Assignment.Op1.IsTemporary())
             {
                 var assignment = expr.Assignment;
-                var temp = assignment.DestinationOperand.Temporary;
+                var temp = assignment.Op1.Temporary;
                 dataFlow[temp].Assignment = expr.Assignment;
             }
         }

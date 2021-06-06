@@ -36,7 +36,7 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 
         public override string ToString()
         {
-            return Name.ToLower();
+            return String.Format("{0}.{1}", Name.ToLower(), ValueNumber);
         }
     }
 }

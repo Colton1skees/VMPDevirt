@@ -23,9 +23,11 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 
         public abstract int GetSize();
 
-        public ImmediateOperand Immediate => (ImmediateOperand)this;
+        public virtual bool SupportsSSA => true;
 
-        public RegisterOperand Register => (RegisterOperand) this;
+        public int ValueNumber { get; set; }
+
+        public ImmediateOperand Immediate => (ImmediateOperand)this;
 
         public TemporaryOperand Temporary => (TemporaryOperand)this;
 
