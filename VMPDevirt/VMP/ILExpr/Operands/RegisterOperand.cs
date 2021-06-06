@@ -18,7 +18,7 @@ namespace VMPDevirt.VMP.ILExpr.Operands
         }
 
         public override int GetSize()
-        {
+        {   
             return Reg.GetSizeInBits();
         }
 

@@ -26,7 +26,7 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 
         public override string ToString()
         {
-            return String.Format("vcr[0x{0}]", Index.ToString("X"));
+            return String.Format("scratch[0x{0}]", Index.ToString("X"));
         }
 
         public override int GetSize()

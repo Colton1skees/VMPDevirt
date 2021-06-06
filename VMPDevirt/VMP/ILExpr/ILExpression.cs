@@ -27,16 +27,26 @@ namespace VMPDevirt.VMP.ILExpr
         // Arithmetic:
         ADD,
         SUB,
-        MUL,
+        /// <summary>
+        /// Signed multiplication
+        /// </summary>
+        IMUL,
+        /// <summary>
+        /// Unsigned multiplication
+        /// </summary>
+        UMUL,
         DIV,
 
         // Logical:
+        TRUNC,
         AND,
         OR,
         XOR,
         NAND,
         ROL,
         ROR,
+        SHR,
+        SHL,
 
         // MISC:
         MOV,

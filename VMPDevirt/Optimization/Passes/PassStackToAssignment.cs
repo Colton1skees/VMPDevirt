@@ -62,26 +62,28 @@ namespace VMPDevirt.Optimization.Passes
                     TrackPop(expr);
                 }
 
-                else if(expr.OpCode == ExprOpCode.READMEM)
+                else if (expr.OpCode == ExprOpCode.READMEM)
                 {
-                    var pushExpr = pushExpressions.Pop();
-                    expressionsToRemove.Add(pushExpr);
+                    //var pushExpr = pushExpressions.Pop();
+                   // expressionsToRemove.Add(pushExpr);
                     // TODO: Validate if the push expression is actually used....
-                   
+
                 }
             }
 
-            foreach(var expr in expressionsToRemove)
+
+            foreach (var expr in expressionsToRemove)
             {
                 block.RemoveExpression(expr);
             }
 
-            if(pushExpressions.Any())
+            if (pushExpressions.Any())
             {
-                throw new Exception(String.Format("Failed to optimize stack assignments. Encountered {0} unhandled pops", pushExpressions.Count));
+                //throw new Exception(String.Format("Failed to optimize stack assignments. Encountered {0} unhandled pops", pushExpressions.Count));
             }
 
             UpdateBlockWithOptimizations();
+
         }
 
         private void TrackPush(ILExpression pushExpr)
@@ -105,6 +107,9 @@ namespace VMPDevirt.Optimization.Passes
                 optimizedSequence.PopExpr = popExpr;
                 optimizedSequence.OptimizedAssignment = new AssignmentExpression(ExprOpCode.COPY, popExpr.LHS, optimizedSequence.PushExpr.LHS);
                 sequences.Add(optimizedSequence);
+
+                if (optimizedSequence.PushExpr.Size != optimizedSequence.PopExpr.Size)
+                    throw new Exception();
             }
 
         }

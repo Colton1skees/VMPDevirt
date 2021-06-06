@@ -40,7 +40,7 @@ namespace VMPDevirt.VMP
             VMPEmulator emulator = new VMPEmulator(this);
 
             // Start emulating the virtualized function. Note: The emulator actually only implements single step functionality, so this only starts executing the first instruction.
-            ulong vmEntry = 0x1400FD439;
+            ulong vmEntry = 0x1400FD443;
             emulator.TraceFunction(vmEntry);
             VMPLifter lifter = new VMPLifter(this, emulator);
 

@@ -22,45 +22,15 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 
         public abstract int GetSize();
 
-        public ImmediateOperand Immediate
-        {
-            get
-            {
-                return (ImmediateOperand)this;
-            }
-        }
+        public ImmediateOperand Immediate => (ImmediateOperand)this;
 
-        public RegisterOperand Register
-        {
-            get
-            {
-                return (RegisterOperand)this;
-            }
-        }
+        public RegisterOperand Register => (RegisterOperand) this;
 
-        public TemporaryOperand Temporary
-        {
-            get
-            {
-                return (TemporaryOperand)this;
-            }
-        }
+        public TemporaryOperand Temporary => (TemporaryOperand)this;
 
-        public VirtualContextIndexOperand VirtualContextIndex
-        {
-            get
-            {
-                return (VirtualContextIndexOperand)this;
-            }
-        }
+        public VirtualContextIndexOperand VirtualContextIndex => (VirtualContextIndexOperand)this;
 
-        public VirtualRegisterOperand VirtualRegister
-        {
-            get
-            {
-                return (VirtualRegisterOperand)this;
-            }
-        }
+        public VirtualRegisterOperand VirtualRegister => (VirtualRegisterOperand)this;
 
         public bool IsImmediate()
         {

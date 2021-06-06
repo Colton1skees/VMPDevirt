@@ -5,6 +5,7 @@ using Dna.Core.Optimization;
 using Iced.Intel;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -30,6 +31,8 @@ namespace VMPDevirt.VMP
         /// <returns></returns>
         public List<Instruction> OptimizeHandler(List<Instruction> handlerInstructions)
         {
+           // if (handlerInstructions.Any(x => x.IP == 0x14001c177))
+           //         Debugger.Break();
             // Initialize a single valid basic block for the handler.
             handlerBlock = new BasicBlock();
             handlerBlock.Address = handlerInstructions.First().IP;
@@ -128,10 +131,22 @@ namespace VMPDevirt.VMP
             x.Op0Register.GetFullRegister() == devirtualizer.VMState.VRK && 
             x.Op1Register.GetFullRegister() == devirtualizer.VMState.ComputationReg).ToList();
 
+            var alternativeVrkEnds = handlerBlock.Instructions.Where(x =>
+            x.Mnemonic == Mnemonic.Pop &&
+            x.Op0Register.GetFullRegister() == devirtualizer.VMState.VRK
+            ).ToList();
+
             if(vrkStarts.Count() == 1 && vrkEnds.Count() == 1)
             {
                 var start = handlerBlock.Instructions.IndexOf(vrkStarts.Single());
                 var end = handlerBlock.Instructions.IndexOf(vrkEnds.Single());
+                handlerBlock.Instructions.RemoveRange(start, end - start + 1);
+            }
+
+            else if(vrkStarts.Count() == 1 && alternativeVrkEnds.Count() == 1)
+            {
+                var start = handlerBlock.Instructions.IndexOf(vrkStarts.Single());
+                var end = handlerBlock.Instructions.IndexOf(alternativeVrkEnds.Single());
                 handlerBlock.Instructions.RemoveRange(start, end - start + 1);
             }
         }

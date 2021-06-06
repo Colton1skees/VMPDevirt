@@ -29,8 +29,12 @@ namespace VMPDevirt.Optimization.Passes
             this.block = block;
             dataFlow = new Dictionary<TemporaryOperand, TemporaryDataFlow>();
 
-            var temporaries = block.Expressions.SelectMany(x => x.Operands).Where(x => x.IsTemporary()).Cast<TemporaryOperand>();
-            foreach(var temporary in temporaries)
+            var operandTemporaries = block.Expressions.SelectMany(x => x.Operands).Where(x => x.IsTemporary()).Cast<TemporaryOperand>().ToList();
+            var alternativeTemporaries = block.Expressions.Where(x => x.IsAssignmentExpression() && x.Assignment.DestinationOperand.IsTemporary()).Select(x => x.Assignment.DestinationOperand.Temporary);
+
+            operandTemporaries.AddRange(alternativeTemporaries);
+            operandTemporaries = operandTemporaries.Distinct().ToList();
+            foreach(var temporary in operandTemporaries)
             {
                 dataFlow[temporary] = new TemporaryDataFlow();
             }
@@ -68,11 +72,12 @@ namespace VMPDevirt.Optimization.Passes
         /// <param name="expr"></param>
         private void TrackReads(ILExpression expr)
         {
-            if (!expr.IsAssignmentExpression())
+            if(expr.OpCode == ExprOpCode.POP)
+            {
                 return;
+            }
 
-            var assignment = expr.Assignment;
-            var temporaryOperands = assignment.Operands.Where(x => x.IsTemporary()).Cast<TemporaryOperand>();
+            var temporaryOperands = expr.Operands.Where(x => x.IsTemporary()).Cast<TemporaryOperand>();
             foreach(var temp in temporaryOperands)
             {
                 dataFlow[temp].Readers.Add(expr);

@@ -43,6 +43,8 @@ namespace VMPDevirt.VMP
             lifterFunctions.Add(LiftPushVSP, 3);
             lifterFunctions.Add(LiftSetVSP, 1);
             lifterFunctions.Add(LiftVNAND, 8);
+            lifterFunctions.Add(LiftVMUL, 8);
+            lifterFunctions.Add(LiftVSHR, 7);
             lifterFunctions.Add(LiftReadMem, 3);
             lifterFunctions.Add(LiftVMExit, 18);
         }
@@ -50,7 +52,7 @@ namespace VMPDevirt.VMP
         public List<ILExpression> LiftHandlerToIL(List<Instruction> instructions)
         {
             // Create a collection for the results of each lifter
-            var possibleLifters = lifterFunctions.Where(x => x.Value == instructions.Count);
+            var possibleLifters = lifterFunctions.Where(x => x.Value == instructions.Count).ToList();
             Dictionary<int, List<ILExpression>> liftedCollections = new Dictionary<int, List<ILExpression>>();
             for (int i = 0; i < possibleLifters.Count(); i++)
             {
@@ -536,6 +538,132 @@ namespace VMPDevirt.VMP
             }
         }
 
+        /*
+            mov rax,[rbp+8]
+            mov rdx,[rbp]
+            sub rbp,8
+            mul rdx
+            mov [rbp+8],rdx
+            mov [rbp+10h],rax
+            pushfq
+            pop qword ptr [rbp]
+       */
+        private void LiftVMUL(List<ILExpression> outputInstructions)
+        {
+            switch (instructionIndex)
+            {
+                case 0:
+                    ReadVSP();
+                    break;
+
+                case 1:
+                    ReadVSP();
+                    break;
+
+                case 2:
+                    ShiftVSP();
+                    break;
+
+                case 3:
+                    Expect((ins.Mnemonic == Mnemonic.Mul || ins.Mnemonic == Mnemonic.Imul) && ins.Op0Kind == OpKind.Register);
+                    var size = ins.Op0Register.GetSizeInBits();
+                    var t0 = GetNewTemporary(size);
+                    var t1 = GetNewTemporary(size);
+                    var t2 = GetNewTemporary(size);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
+                    outputInstructions.Add(new AssignmentExpression(ins.Mnemonic == Mnemonic.Mul ? ExprOpCode.UMUL : ExprOpCode.IMUL, t2, t0, t1));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, new VirtualRegisterOperand(VirtualRegister.RFLAGS), t2));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t0));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t1));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
+                    break;
+
+                case 4:
+                    WriteToVSP();
+                    break;
+
+                case 5:
+                    WriteToVSP();
+                    break;
+
+                case 6:
+                    PushFlags();
+                    break;
+
+                case 7:
+                    PopFlags();
+                    break;
+
+                default:
+                    throw new InvalidHandlerMatchException();
+            }
+        }
+
+        /*
+            mov rax,[rbp+8]
+            mov rdx,[rbp]
+            sub rbp,8
+            mul rdx
+            mov [rbp+8],rdx
+            mov [rbp+10h],rax
+            pushfq
+            pop qword ptr [rbp]
+        */
+        private void LiftVSHR(List<ILExpression> outputInstructions)
+        {
+            switch (instructionIndex)
+            {
+                case 0:
+                    ReadVSP();
+                    break;
+
+                case 1:
+                    ReadVSP();
+                    break;
+
+                case 2:
+                    ShiftVSP();
+                    break;
+
+                case 3:
+                    Expect(ins.Mnemonic == Mnemonic.Shr && ins.Op0Kind == OpKind.Register);
+                    var outputSize = ins.Op0Register.GetSizeInBits();
+                    var shiftSize = ins.Op1Register.GetSizeInBits();
+                    var t0 = GetNewTemporary(outputSize);
+                    var t1 = GetNewTemporary(16);
+                    var t2 = GetNewTemporary(8);
+                    if (shiftSize != 8)
+                        throw new Exception();
+
+
+                    var t3 = GetNewTemporary(outputSize);
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.TRUNC, t2, t1, ExprOperand.Create(8, 8)));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.SHR, t3, t0, t1));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, new VirtualRegisterOperand(VirtualRegister.RFLAGS), t3));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t3));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
+                    break;
+
+                case 4:
+                    WriteToVSP();
+                    break;
+
+                case 5:
+                    PushFlags();
+                    break;
+
+                case 6:
+                    PopFlags();
+                    break;
+
+                default:
+                    throw new InvalidHandlerMatchException();
+            }
+        }
+
         /// <summary>
         /// mov reg, [vip]
         /// </summary>
@@ -592,7 +720,7 @@ namespace VMPDevirt.VMP
         }
 
         /// <summary>
-        /// mov vsp, reg
+        /// mov [vsp], reg
         /// </summary>
         private void WriteToVSP()
         {
