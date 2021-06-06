@@ -1,4 +1,5 @@
-﻿using Iced.Intel;
+﻿using Dna.Core;
+using Iced.Intel;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -28,8 +29,6 @@ namespace VMPDevirt.VMP.ILExpr.Operands
 
         public TemporaryOperand Temporary => (TemporaryOperand)this;
 
-        public VirtualContextIndexOperand VirtualContextIndex => (VirtualContextIndexOperand)this;
-
         public VirtualRegisterOperand VirtualRegister => (VirtualRegisterOperand)this;
 
         public bool IsImmediate()
@@ -57,19 +56,32 @@ namespace VMPDevirt.VMP.ILExpr.Operands
             return Type == ExprOperandType.VirtualRegisterOperand;
         }
 
-        public static ExprOperand Create(ulong value, int size)
+        public static ImmediateOperand CreateImmediate(ulong value, int size)
         {
             return new ImmediateOperand(value, size);
         }
 
-        public static ExprOperand Create(long value, int size)
+        public static ImmediateOperand CreateImmediate(long value, int size)
         {
             return new ImmediateOperand(value, size);
         }
 
-        public static ExprOperand Create(Register register)
+        public static VirtualRegisterOperand CreateVirtualRegister(string name, int size)
         {
-            return new RegisterOperand(register);
+            return new VirtualRegisterOperand(name, size);
+        }
+
+        public static VirtualRegisterOperand CreateVirtualRegister(Register register)
+        {
+            if (register.GetSizeInBits() != 64)
+                throw new Exception("TODO: Implement support for indexing lower ranges of registers... ");
+
+            return new VirtualRegisterOperand(register.GetFullRegister().ToString(), 64);
+        }
+
+        public static VirtualRegisterOperand CreateVirtualRegisterForFlags()
+        {
+            return new VirtualRegisterOperand("rflags", 64);
         }
     }
 }

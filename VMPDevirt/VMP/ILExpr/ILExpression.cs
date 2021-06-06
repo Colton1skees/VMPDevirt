@@ -50,7 +50,9 @@ namespace VMPDevirt.VMP.ILExpr
 
         // MISC:
         MOV,
-        COPY
+        COPY,
+        SLICE,
+        COMBINE,
     }
 
     public enum ExprType
@@ -66,9 +68,11 @@ namespace VMPDevirt.VMP.ILExpr
 
         public ExprOpCode OpCode { get; set; }
 
-        public ExprOperand LHS { get; set; }
+        public ExprOperand Op1 { get; set; }
 
-        public ExprOperand RHS { get; set; }
+        public ExprOperand Op2 { get; set; }
+
+        public ExprOperand Op3 { get; set; }
 
         public ulong Address { get; set; }
 
@@ -84,12 +88,12 @@ namespace VMPDevirt.VMP.ILExpr
 
         public IReadOnlyList<ExprOperand> Operands => GetOperands();
 
-        protected ILExpression(ExprOpCode _opCode, ExprOperand _lhs = null, ExprOperand _rhs = null)
+        protected ILExpression(ExprOpCode _opCode, ExprOperand _opOne = null, ExprOperand _opTwo = null, ExprOperand _opThree = null)
         {
             OpCode = _opCode;
-            LHS = _lhs;
-            RHS = _rhs;
-
+            Op1 = _opOne;
+            Op2 = _opTwo;
+            Op3 = _opThree;
             lock(globalIDLock)
             {
                 globalIDCount++;
@@ -110,10 +114,12 @@ namespace VMPDevirt.VMP.ILExpr
         public IReadOnlyList<ExprOperand> GetOperands()
         {
             List<ExprOperand> operands = new List<ExprOperand>();
-            if (HasLHS())
-                operands.Add(LHS);
-            if (HasRHS())
-                operands.Add(RHS);
+            if (HasOpOne())
+                operands.Add(Op1);
+            if (HasOpTwo())
+                operands.Add(Op2);
+            if (HasOpThree())
+                operands.Add(Op3);
             return operands.AsReadOnly();
         }
 
@@ -121,14 +127,19 @@ namespace VMPDevirt.VMP.ILExpr
 
         public StackExpression Stack => (StackExpression)this;
 
-        public bool HasLHS()
+        public bool HasOpOne()
         {
-            return LHS != null;
+            return Op1 != null;
         }
 
-        public bool HasRHS()
+        public bool HasOpTwo()
         {
-            return RHS != null;
+            return Op2 != null;
+        }
+
+        public bool HasOpThree()
+        {
+            return Op3 != null;
         }
 
         public bool IsAssignmentExpression()
@@ -169,9 +180,9 @@ namespace VMPDevirt.VMP.ILExpr
             if (op == 0)
                 result = String.Format("{0}", OpCode);
             else if (op == 1)
-                result = String.Format("{0} {1}", GetOpCodeWithSize(), LHS);
+                result = String.Format("{0} {1}", GetOpCodeWithSize(), Op1);
             else if (op == 2)
-                result = String.Format("{0} {1}, {2}", GetOpCodeWithSize(), RHS);
+                result = String.Format("{0} {1}, {2}", GetOpCodeWithSize(), Op2);
             else
                 throw new Exception("Invalid operand count.");
 

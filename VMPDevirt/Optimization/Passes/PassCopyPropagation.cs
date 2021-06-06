@@ -95,14 +95,14 @@ namespace VMPDevirt.Optimization.Passes
                 //     all expressions which use this temporary get replaced with the original value
                 if(flow.Assignment != null && flow.Assignment.OpCode == ExprOpCode.COPY)
                 {
-                    var originalOperand = flow.Assignment.LHS;
+                    var originalOperand = flow.Assignment.Op1;
                     foreach(var reader in flow.Readers)
                     {
-                        if (reader.LHS == temporary)
-                            reader.LHS = originalOperand;
+                        if (reader.Op1 == temporary)
+                            reader.Op1 = originalOperand;
 
-                        if (reader.RHS == temporary)
-                            reader.RHS = originalOperand;
+                        if (reader.Op2 == temporary)
+                            reader.Op2 = originalOperand;
                     }
 
                     block.Expressions.Remove(flow.Assignment);

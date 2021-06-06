@@ -4,35 +4,39 @@ using System.Text;
 
 namespace VMPDevirt.VMP.ILExpr.Operands
 {
-    public enum VirtualRegister
-    {
-        RFLAGS,
-        VSP,
-    }
-
-    /// <summary>
-    /// Represents any construct which cannot be represented under normal circumstances(e.g special register like VSP, and sadly eflags).
-    /// </summary>
     public class VirtualRegisterOperand : ExprOperand
     {
-        public override ExprOperandType Type => ExprOperandType.VirtualRegisterOperand;
+        public string Name { get; }
+        public int Size { get; }
 
-        public VirtualRegister VirtualRegister { get; set; }
-
-        public VirtualRegisterOperand(VirtualRegister _register)
+        public VirtualRegisterOperand(string _name, int _size)
         {
-            VirtualRegister = _register;
+            Name = _name.ToLower();
+            Size = _size;
         }
+
+        public override ExprOperandType Type => ExprOperandType.VirtualRegisterOperand;
 
         public override int GetSize()
         {
-            return VirtualRegister.GetSizeInBits();
+            return Size;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj.GetType() != typeof(VirtualRegisterOperand))
+                return false;
+
+            var vReg = (VirtualRegisterOperand)obj;
+            if (vReg.Name != this.Name)
+                return false;
+
+            return true;
         }
 
         public override string ToString()
         {
-            return VirtualRegister.ToString();
+            return Name.ToLower();
         }
-
     }
 }

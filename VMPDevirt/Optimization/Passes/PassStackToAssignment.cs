@@ -64,8 +64,8 @@ namespace VMPDevirt.Optimization.Passes
 
                 else if (expr.OpCode == ExprOpCode.READMEM)
                 {
-                    //var pushExpr = pushExpressions.Pop();
-                   // expressionsToRemove.Add(pushExpr);
+                    var pushExpr = pushExpressions.Pop();
+                    expressionsToRemove.Add(pushExpr);
                     // TODO: Validate if the push expression is actually used....
 
                 }
@@ -79,7 +79,7 @@ namespace VMPDevirt.Optimization.Passes
 
             if (pushExpressions.Any())
             {
-                //throw new Exception(String.Format("Failed to optimize stack assignments. Encountered {0} unhandled pops", pushExpressions.Count));
+                throw new Exception(String.Format("Failed to optimize stack assignments. Encountered {0} unhandled pops", pushExpressions.Count));
             }
 
             UpdateBlockWithOptimizations();
@@ -105,7 +105,7 @@ namespace VMPDevirt.Optimization.Passes
                 OptimizedPushPopSequence optimizedSequence = new OptimizedPushPopSequence();
                 optimizedSequence.PushExpr = pushExpressions.Pop();
                 optimizedSequence.PopExpr = popExpr;
-                optimizedSequence.OptimizedAssignment = new AssignmentExpression(ExprOpCode.COPY, popExpr.LHS, optimizedSequence.PushExpr.LHS);
+                optimizedSequence.OptimizedAssignment = new AssignmentExpression(ExprOpCode.COPY, popExpr.Op1, optimizedSequence.PushExpr.Op1);
                 sequences.Add(optimizedSequence);
 
                 if (optimizedSequence.PushExpr.Size != optimizedSequence.PopExpr.Size)
@@ -123,7 +123,7 @@ namespace VMPDevirt.Optimization.Passes
             OptimizedPushPopSequence optimizedSequence = new OptimizedPushPopSequence();
             optimizedSequence.PushExpr = pushExpr;
             optimizedSequence.PopExpr = popExpr;
-            optimizedSequence.OptimizedAssignment = new AssignmentExpression(ExprOpCode.COPY, popExpr.LHS, optimizedSequence.PushExpr.LHS);
+            optimizedSequence.OptimizedAssignment = new AssignmentExpression(ExprOpCode.COPY, popExpr.Op1, optimizedSequence.PushExpr.Op1);
             return optimizedSequence;
         }
 

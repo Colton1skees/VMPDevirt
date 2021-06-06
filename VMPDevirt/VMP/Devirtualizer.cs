@@ -47,23 +47,23 @@ namespace VMPDevirt.VMP
             ILRoutine routine = new ILRoutine(0);
             var block = routine.AllocateEmptyBlock(0);
             // horrific hardcoded VMEnter to save time:
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R14)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RCX)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RDX)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R13)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R8)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RSI)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R15)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RAX)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R9)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS))); // FLAGS
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R11)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R10)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RDI)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RBX)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.R12)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(Register.RBP)));
-            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(0, 64)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.R14)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.RCX)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.RDX)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.R13)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.R8)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.RSI)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.R15)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.RAX)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.R9)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegisterForFlags())); // FLAGS
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.R11)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.R10)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.RDI)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.RBX)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.R12)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister(Register.RBP)));
+            block.Expressions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateImmediate(0, 64)));
 
             /*
             var entryInstructions = handlerOptimizer.OptimizeHandler(Dna.FunctionParser.GetControlFlowGraph(0x14009B17D).GetInstructions().ToList());
@@ -105,6 +105,12 @@ namespace VMPDevirt.VMP
                     // Pass the lifted function into various optimization passes
                     if(liftedExpressions.Any(x => x.OpCode == ExprOpCode.VMEXIT))
                     {
+
+                         // For now we placeholder pop to account for the return address which we didn't model being pushed in vmenter.
+                         // TODO: validate that this is actually needed & we didn't screw up when translating vmp -> ILExpr (ReadMem/SetVSP/ReadVSP being the most likely culprit).
+                         Console.WriteLine("note: we inserted a temporary placeholder pop to fix up the stack to temporary pass");
+                         block.Expressions.Insert(block.Expressions.Count - 2, new StackExpression(ExprOpCode.POP, new TemporaryOperand(1234, 64)));
+
                         Console.WriteLine("Finished lifting up until vexit...");
 
                         Console.WriteLine("PRE-OPTIMIZATION: ");

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using VMPDevirt.VMP.ILExpr.Operands;
 
@@ -11,7 +12,7 @@ namespace VMPDevirt.VMP.ILExpr
 
         public ExprOperand DestinationOperand { get; set; }
 
-        public AssignmentExpression(ExprOpCode _opCode, ExprOperand _destination, ExprOperand _lhs = null, ExprOperand _rhs = null) : base(_opCode, _lhs, _rhs)
+        public AssignmentExpression(ExprOpCode _opCode, ExprOperand _destination, ExprOperand _opOne = null, ExprOperand _opTwo = null, ExprOperand _opThree = null) : base(_opCode, _opOne, _opTwo, _opThree)
         {
             DestinationOperand = _destination;
             if(!IsValidDestination())
@@ -44,9 +45,11 @@ namespace VMPDevirt.VMP.ILExpr
             string result = null;
 
             if (op == 1)
-                result = String.Format("{0} = {1} {2}", DestinationOperand, GetOpCodeWithSize(), LHS);
+                result = String.Format("{0} = {1} {2}", DestinationOperand, GetOpCodeWithSize(), Op1);
             else if (op == 2)
-                result = String.Format("{0} = {1} {2}, {3}", DestinationOperand, GetOpCodeWithSize(), LHS, RHS);
+                result = String.Format("{0} = {1} {2}, {3}", DestinationOperand, GetOpCodeWithSize(), Op1, Op2);
+            else if(op == 3)
+                result = String.Format("{0} = {1} {2}, {3}, {4}", DestinationOperand, GetOpCodeWithSize(), Op1, Op2, Op3);
             else
                 throw new Exception(String.Format("Failed to convert assignment expression to string. The operand count {0} is not valid.", op));
 

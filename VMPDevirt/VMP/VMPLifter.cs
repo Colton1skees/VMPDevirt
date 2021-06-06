@@ -113,7 +113,7 @@ namespace VMPDevirt.VMP
             add rsi,1 
             mov rcx,[rbp] 
             add rbp,8 
-            mov [rsp+rax],rcx 
+            mov [rsp+rax],edx 
         */
         private void LiftVCPop(List<ILExpression> outputInstructions)
         {
@@ -137,9 +137,79 @@ namespace VMPDevirt.VMP
 
                 case 4:
                     WriteToVCPOffset();
-                    ulong offset = GetVCPOffset();
+                    int offsetInBytes = (int)GetVCPOffset();
                     var size = ins.Op1Register.GetSizeInBits();
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, new VirtualContextIndexOperand(offset, size)));
+
+                    // Create a virtual register for the scratch space item
+                    // Note: The scratch space is split up into 8 byte segments, which allows us to treat them like virtual registers(there are no overlapping writes crossing the 8 byte boundary)
+                    var scratchIndex = offsetInBytes / 8;
+                    var scratchName = "scratch_" + scratchIndex;
+                    var vReg = ExprOperand.CreateVirtualRegister(scratchName, 64);
+
+                    // NOTE: This slicing code is awful and has a huge potential for error.. TODO: Rewrite after I finally implement SSA construction
+                    // A register is sliced if part of the register is accessed and not the whole
+                    bool isSliced = offsetInBytes % 8 != 0 || size != 64;
+                    if (isSliced)
+                    {
+                        // If the write starts at 0
+                        if(offsetInBytes % 8 == 0)
+                        {
+                            // vcr[1] = ecx
+
+                            var t0 = GetNewTemporary(size);
+                            outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+
+                            // Build a slice for the unwritten virtual register bits
+                            int indexFirstUnwrittenBit = size;
+                            int unwrittenSize = 63 - indexFirstUnwrittenBit;
+                            var slice = BuildSliceForOperand(vReg, indexFirstUnwrittenBit, unwrittenSize);
+                            var t1 = GetNewTemporary(size);
+                            slice.DestinationOperand = t1;
+                            outputInstructions.Add(slice);
+
+                            // Concatenate the slices
+                            outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMBINE, vReg, t0, t1));
+                        }
+
+                        // If the write starts at a value greater than zero
+                        else
+                        {
+                            // vcr[1] + 4 = ecx
+                            var t0 = GetNewTemporary(size);
+                            outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+
+                            int byteOffsetFromStart = offsetInBytes % 8;
+                            if (byteOffsetFromStart != 4)
+                                throw new Exception();
+
+                            int indexFirstUnwrittenBit = 0;
+                            int unwrittenSize = byteOffsetFromStart * 8;
+                            var slice = BuildSliceForOperand(vReg, indexFirstUnwrittenBit, unwrittenSize);
+                            var t1 = GetNewTemporary(size);
+                            slice.DestinationOperand = t1;
+
+                            // Concatenate the slices
+                            outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMBINE, vReg, t0, t1));
+                        }
+
+
+                        /*
+                        // Construct a slice for the portion that isn't written to
+                        int startBitIndex = (int)((offsetInBytes % 8));
+                        if (startBitIndex != 0)
+                            startBitIndex = 8 - startBitIndex;
+                        var slice = BuildSliceForOperand(vReg, startBitIndex, 64 - size);
+                        */
+   
+                    }
+
+                    else
+                    {
+                        var t0 = GetNewTemporary(size);
+                        outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
+                        outputInstructions.Add(new AssignmentExpression(ExprOpCode.COPY, vReg, t0));
+                    }
+
                     break;
 
                 default:
@@ -173,7 +243,7 @@ namespace VMPDevirt.VMP
                 case 3:
                     WriteToVSP();
                     ulong immediate = emulator.ReadRegister(ins.Op1Register);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.Create(immediate, ins.Op1Register.GetSizeInBits())));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateImmediate(immediate, ins.Op1Register.GetSizeInBits())));
                     break;
 
                 default:
@@ -203,9 +273,32 @@ namespace VMPDevirt.VMP
 
                 case 2:
                     ReadVCP();
-                    ulong offset = GetVCPOffset();
-                    var size = ins.MemorySize.GetSize() * 8;
-                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualContextIndexOperand(offset, size)));
+                    int offset = (int)GetVCPOffset();
+                    var size = ins.Op0Register.GetSizeInBits(); 
+
+                    // Create a virtual register for the scratch space item
+                    // Note: The scratch space is split up into 8 byte segments, which allows us to treat them like virtual registers(there are no overlapping writes crossing the 8 byte boundary)
+                    if (offset % 8 != 0)
+                        throw new Exception("Failed to lift VCPush. The register offset was not 8 byte aligned");
+                    var scratchIndex = offset / 8;
+                    var scratchName = "scratch_" + scratchIndex;
+                    var vReg = ExprOperand.CreateVirtualRegister(scratchName, 64);
+
+                    // truncate the scratch space item to a lower size if necessary
+                    if (size != 64)
+                    {
+                        throw new Exception();
+                        Debugger.Break();
+                        var t0 = GetNewTemporary(size);
+                        outputInstructions.Add(new AssignmentExpression(ExprOpCode.TRUNC, t0, vReg, ExprOperand.CreateImmediate(size, 8)));
+                        outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t0));
+                    }
+
+                    // If truncation isn't necessary then we just directly push the scratch space item
+                    else
+                    {
+                        outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, vReg));
+                    }
                     break;
 
                 case 3:
@@ -252,9 +345,9 @@ namespace VMPDevirt.VMP
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.ADD, t2, t0, t1));
-                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, new VirtualRegisterOperand(VirtualRegister.RFLAGS), t2));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, ExprOperand.CreateVirtualRegisterForFlags(), t2));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t2));
-                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegisterForFlags()));
                     break;
 
                 case 3:
@@ -300,7 +393,7 @@ namespace VMPDevirt.VMP
                     WriteToVSP();
                     if (ins.Op1Register.GetSizeInBits() != 64)
                         throw new InvalidHandlerMatchException();
-                    outputInstructions.Add(new SpecialExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.VSP)));
+                    outputInstructions.Add(new SpecialExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegister("vsp", 64)));
                     break;
 
                 default:
@@ -328,8 +421,9 @@ namespace VMPDevirt.VMP
                     var t0 = GetNewTemporary(size);
 
                     
-                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.READMEM, t0, new VirtualRegisterOperand(VirtualRegister.VSP)));
-                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COPY, new VirtualRegisterOperand(VirtualRegister.VSP), t0));
+                    
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.READMEM, t0, ExprOperand.CreateVirtualRegister("vsp", 64)));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COPY, ExprOperand.CreateVirtualRegister("vsp", 64), t0));
                     
                     break;
 
@@ -377,9 +471,9 @@ namespace VMPDevirt.VMP
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.NAND, t2, t0, t1));
-                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, new VirtualRegisterOperand(VirtualRegister.RFLAGS), t2));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, ExprOperand.CreateVirtualRegisterForFlags(), t2));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t2));
-                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegisterForFlags()));
                     break;
 
                 case 5:
@@ -442,87 +536,87 @@ namespace VMPDevirt.VMP
                 case 0:
                     // In reality this should lift to mov rsp, rbp. However, for now we are lifting it as a copy of the IR VSP
                     Expect(Mnemonic.Mov, Register.RSP, vmpState.VSP);
-                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COPY, ExprOperand.Create(Register.RSP), new VirtualRegisterOperand(VirtualRegister.VSP)));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COPY, ExprOperand.CreateVirtualRegister(Register.RSP), ExprOperand.CreateVirtualRegister("vsp", 64)));
                     break;
 
                 case 1:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 2:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 3:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 4:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 5:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 6:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 7:
                     Expect(Mnemonic.Popfq);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegisterForFlags()));
                     break;
 
                 case 8:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 9:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 10:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 11:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 12:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 13:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 14:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 15:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
                 case 16:
                     Expect(Mnemonic.Pop);
-                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.Create(ins.Op0Register)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.POP, ExprOperand.CreateVirtualRegister(ins.Op0Register)));
                     break;
 
 
@@ -573,10 +667,10 @@ namespace VMPDevirt.VMP
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
                     outputInstructions.Add(new AssignmentExpression(ins.Mnemonic == Mnemonic.Mul ? ExprOpCode.UMUL : ExprOpCode.IMUL, t2, t0, t1));
-                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, new VirtualRegisterOperand(VirtualRegister.RFLAGS), t2));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, ExprOperand.CreateVirtualRegisterForFlags(), t2));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t0));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t1));
-                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegisterForFlags()));
                     break;
 
                 case 4:
@@ -640,11 +734,11 @@ namespace VMPDevirt.VMP
                     var t3 = GetNewTemporary(outputSize);
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t0));
                     outputInstructions.Add(new StackExpression(ExprOpCode.POP, t1));
-                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.TRUNC, t2, t1, ExprOperand.Create(8, 8)));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.TRUNC, t2, t1, ExprOperand.CreateImmediate(8, 8)));
                     outputInstructions.Add(new AssignmentExpression(ExprOpCode.SHR, t3, t0, t1));
-                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, new VirtualRegisterOperand(VirtualRegister.RFLAGS), t3));
+                    outputInstructions.Add(new AssignmentExpression(ExprOpCode.COMPUTEFLAGS, ExprOperand.CreateVirtualRegisterForFlags(), t3));
                     outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, t3));
-                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, new VirtualRegisterOperand(VirtualRegister.RFLAGS)));
+                    outputInstructions.Add(new StackExpression(ExprOpCode.PUSH, ExprOperand.CreateVirtualRegisterForFlags()));
                     break;
 
                 case 4:
@@ -799,6 +893,15 @@ namespace VMPDevirt.VMP
             TemporaryCount++;
 
             return new TemporaryOperand(id, size);
+        }
+
+        private AssignmentExpression BuildSliceForOperand(ExprOperand inputOperand, int startBitIndex, int sizeInBits)
+        {
+            // Identify the start/end indices for slicing
+            var indexLastWrittenBit = startBitIndex + (sizeInBits);
+
+            var slice = new AssignmentExpression(ExprOpCode.SLICE, inputOperand, inputOperand, ExprOperand.CreateImmediate(startBitIndex, 8), ExprOperand.CreateImmediate(indexLastWrittenBit, 8));
+            return slice;
         }
     }
 }
